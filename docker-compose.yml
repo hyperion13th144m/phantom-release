@@ -1,0 +1,82 @@
+services:
+  mona:
+    container_name: mona
+    image: ghcr.io/hyperion13th144m/phantom-mona:main
+    volumes:
+      - ${SRC_DIR}:/src_dir
+      - ${DATA_DIR}:/data_dir
+      - ${LOG_DIR_MONA}:/var/log/mona
+    tty: true
+    environment:
+      SRC_DIR: /src_dir
+      DATA_DIR: /data_dir
+      OMP_THREAD_LIMIT: 1
+  
+  panther:
+    container_name: panther
+    image: ghcr.io/hyperion13th144m/phantom-panther:main
+    volumes:
+      - ${DATA_DIR}:/data_dir
+      - ${EXTRA_DATA_DIR}:/extra_dir
+      - ${LOG_DIR_PANTHER}:/var/log/panther
+    tty: true
+    environment:
+      DATA_DIR: /data_dir
+      ES_URL: http://es01:9200
+      ES_USER: ${ES_USER}
+      ES_PASSWORD: ${ES_PASSWORD}
+      LANG: ja_JP.UTF-8
+      TZ: Asia/Tokyo
+      SQLITE_PATH: /extra_dir/${SQLITE_NAME}
+
+  fox:
+    container_name: fox
+    image: ghcr.io/hyperion13th144m/phantom-fox:main
+    volumes:
+      - ${DATA_DIR}:/data_dir
+      - ${LOG_DIR_FOX}:/var/log/fox
+
+  joker:
+    container_name: joker
+    image: ghcr.io/hyperion13th144m/phantom-joker:main
+    volumes:
+      - ${LOG_DIR_JOKER}:/var/log/joker
+      - ${EXTRA_DATA_DIR}:/extra_dir
+    environment:
+      NODE_ENV: production
+      LANG: ja_JP.UTF-8
+      TZ: Asia/Tokyo
+      ES_URL: http://es01:9200
+      ES_USER: ${ES_USER}
+      ES_PASSWORD: ${ES_PASSWORD}
+      NEXT_PUBLIC_IMAGE_BASE_URL: /images
+      NEXT_PUBLIC_DOCUMENT_BASE_URL: /docs
+      SQLITE_PATH: /extra_dir/${SQLITE_NAME}
+
+  es01:
+    image: ghcr.io/hyperion13th144m/phantom-elasticsearch:main
+    container_name: phantom-elasticsearch
+    environment:
+      xpack.security.enabled: false
+      discovery.type: single-node
+      ES_PASSWORD: ${ES_PASSWORD}
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    mem_limit: ${MEM_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    restart: always
+
+  nginx:
+    image: ghcr.io/hyperion13th144m/phantom-nginx:main
+    container_name: phantom-nginx
+    volumes:
+      - ${DATA_DIR}:/usr/share/nginx/html
+    ports:
+      - ${NGINX_PORT}:8080
+
+volumes:
+  es-data:
