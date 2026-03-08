@@ -20,7 +20,7 @@ list_of_targets(){
     echo -e "\tA102"     拒絶査定
     echo -e "\tA1131"    拒絶理由通知書
     echo -e "\tA1191"    補正却下の決定
-    echo -e "\tA1192"    補正却下の決定
+    #echo -e "\tA1192"    補正却下の決定
     echo -e "\tA130"     引用非特許文献
     echo -e "\tA2242623" 実用新案技術評価の通知
 
@@ -39,20 +39,20 @@ list_of_targets(){
     echo -e "\tA151"   手続補正書（方式）,手続補正書
     echo -e "\tA1523"  手続補正書 特許
     echo -e "\tA2523"  手続補正書 実案
-    echo -e "\tA1524"  誤訳訂正書
-    echo -e "\tA1525"  特許協力条約第１９条補正の翻訳文提出書
+    #echo -e "\tA1524"  誤訳訂正書
+    #echo -e "\tA1525"  特許協力条約第１９条補正の翻訳文提出書
     echo -e "\tA1529"  特許協力条約第３４条補正の翻訳文提出書
-    echo -e "\tA1526"  特許協力条約第１９条補正の翻訳文提出書（職権）
-    echo -e "\tA15210" 特許協力条約第３４条補正の翻訳文提出書（職権）
+    #echo -e "\tA1526"  特許協力条約第１９条補正の翻訳文提出書（職権）
+    #echo -e "\tA15210" 特許協力条約第３４条補正の翻訳文提出書（職権）
     echo -e "\tA1527"  特許協力条約第１９条補正の写し提出書
     echo -e "\tA15211" 特許協力条約第３４条補正の写し提出書
-    echo -e "\tA1528"  特許協力条約第１９条補正の写し提出書（職権）
-    echo -e "\tA15212" 特許協力条約第３４条補正の写し提出書（職権）
+    #echo -e "\tA1528"  特許協力条約第１９条補正の写し提出書（職権）
+    #echo -e "\tA15212" 特許協力条約第３４条補正の写し提出書（職権）
 
     echo
     echo "RSPN"
     echo -e "\tA153" 意見書
-    echo -e "\tA159" 弁明書
+    #echo -e "\tA159" 弁明書
 
     echo
     echo "ETC"
@@ -101,10 +101,10 @@ while getopts "lom:t:d" opt; do
 done
 
 PAT_APP_DOC_CODES="A163 A263 A1631 A1632 A1634"
-PAT_AMND="A151 A1523 A1524 A1525 A1529 A1526 A15210 A1527 A15211 A1528 A15212 A2523"
-PAT_RSPN="A153 A159"
+PAT_AMND="A151 A1523 A1529 A1527 A15211 A2523"
+PAT_RSPN="A153"
 PAT_ETC="A1781 A1871 A1872"
-NOTICE="A101 A102 A1131 A1191 A1192 A130 A2242623"
+NOTICE="A101 A102 A1131 A1191 A130 A2242623"
 ALL="$PAT_APP_DOC_CODES $PAT_AMND $PAT_RSPN $PAT_ETC $NOTICE"
 case $TARGET in
   "ALL")
