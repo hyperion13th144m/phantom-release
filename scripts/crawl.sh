@@ -4,11 +4,10 @@ SCRIPT_DIR=$(dirname $0)
 PROJECT_DIR="$SCRIPT_DIR/.."
 
 # default vars.
-MODE=prod
 TARGET=ALL
 NUM_MULTI_PROCESSORS="-m 1"
 OVERWRITE=""
-
+BUILD="false"
 
 list_of_targets(){
     echo "-t {target}: Specify the target for crawling. Supported targets are: ALL, APP_DOC, AMND, RSPN, ETC, NOTICE"
@@ -65,19 +64,22 @@ list_of_targets(){
 }
 
 usage(){
-    echo "Usage: $0 [-m {num_multi_processors}] [-o] [-t {target}] [ -d ]"
-    echo "  -m: Number of multi-processors to use for crawling. Default is 1. max is 4"
-    echo "  -o: Overwrite existing data in the data_dir. WARNING: This will delete all existing data in the data_dir."
+    echo "Usage: $0 [-n {num_multi_processors}] [-o] [-t {target}] [ -d ]"
+    echo "  -n: Number of multi-processors to use for crawling. Default is 1. max is 4"
+    echo "  -o: Overwrite existing data in the data-dir. WARNING: This will delete all existing data in the data-dir."
     echo "  -t: Specify the target for crawling. default is ALL"
-    echo "  -d: execute this script for debug."
+    echo "  -d: output_dir. overwrite DATA_DIR in .env"
     echo 
-    echo "for development, SRC_DIR, DATA_DIR must be defined in .env file."
+    echo "for development, MODE, SRC_DIR, DATA_DIR must be defined in .env file."
     echo "for production, these variables are imported in docker-compose.yml."
 }
 
-while getopts "lom:t:d" opt; do
+# MODE, SRC_DIR, DATA_DIR must be defined in .env file.
+source $PROJECT_DIR/.env
+
+while getopts "blon:t:d:" opt; do
   case $opt in
-    m)
+    n)
       NUM_MULTI_PROCESSORS="-m $OPTARG"
       ;;
     o)
@@ -87,11 +89,14 @@ while getopts "lom:t:d" opt; do
       TARGET="$OPTARG"
       ;;
     d)
-      MODE=dev
+      DATA_DIR="$OPTARG"
       ;;
     l)
       list_of_targets
       exit 0
+      ;;
+    b)
+      BUILD="true"
       ;;
     *)
       usage
@@ -131,17 +136,19 @@ case $TARGET in
     ;;
 esac
 
-if [ "$MODE" = "prod" ]; then
+if [ "$MODE" = "production" ]; then
   docker compose -f $PROJECT_DIR/docker-compose.yml \
-    run --rm -i mona \
+    run --rm -i ghcr.io/hyperion13th144m/phantom-mona:main \
       $OVERWRITE $NUM_MULTI_PROCESSORS \
-      /src_dir /data_dir $TARGET_CODES
-elif [ "$MODE" = "dev" ]; then
-  source $PROJECT_DIR/.env
-  export SRC_DIR DATA_DIR
-  uv run $PROJECT_DIR/mona/src/mona/main.py \
+      /src-dir /data-dir $TARGET_CODES
+elif [ "$MODE" = "development" ]; then
+  if [ "$BUILD" = "true" ]; then
+    docker compose -f $PROJECT_DIR/docker-compose.dev.yml build mona-dev
+  fi
+  docker compose -f $PROJECT_DIR/docker-compose.dev.yml \
+    run --rm -i mona-dev \
       $OVERWRITE $NUM_MULTI_PROCESSORS \
-      $SRC_DIR $DATA_DIR $TARGET_CODES
+      /src-dir /data-dir $TARGET_CODES --mode development
 else
   usage
 fi
