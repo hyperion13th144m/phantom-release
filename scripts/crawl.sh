@@ -138,7 +138,7 @@ esac
 
 if [ "$MODE" = "production" ]; then
   docker compose -f $PROJECT_DIR/docker-compose.yml \
-    run --rm -i ghcr.io/hyperion13th144m/phantom-mona:main \
+    run --rm -i mona \
       $OVERWRITE $NUM_MULTI_PROCESSORS \
       /src-dir /data-dir $TARGET_CODES
 elif [ "$MODE" = "development" ]; then

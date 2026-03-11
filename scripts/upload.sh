@@ -39,7 +39,7 @@ done
 
 if [ "$MODE" = "production" ]; then
   docker compose -f $PROJECT_DIR/docker-compose.yml \
-    run --rm -i ghcr.io/hyperion13th144m/phantom-panther:main \
+    run --rm -i panther \
       upload-documents $SKIP_IF_EXISTS --data-root /data-dir
 elif [ "$MODE" = "development" ]; then
   if [ "$BUILD" = "true" ]; then

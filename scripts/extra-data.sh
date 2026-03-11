@@ -38,7 +38,7 @@ done
 
 if [ "$MODE" = "production" ]; then
   docker compose -f $PROJECT_DIR/docker-compose.yml \
-    run --rm -i ghcr.io/hyperion13th144m/phantom-panther:main \
+    run --rm -i panther \
       restore-metadata
 elif [ "$MODE" = "development" ]; then
   if [ "$BUILD" = "true" ]; then
