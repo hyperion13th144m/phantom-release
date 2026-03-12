@@ -38,16 +38,19 @@ while getopts "hsb" opt; do
 done
 
 if [ "$MODE" = "production" ]; then
-  docker compose -f $PROJECT_DIR/docker-compose.yml \
-    run --rm -i panther \
-      upload-documents $SKIP_IF_EXISTS --data-root /data-dir
+  DOCKER_COMPOSE="-f $PROJECT_DIR/docker-compose.yml"
+  CONTAINER_NAME="panther"
 elif [ "$MODE" = "development" ]; then
+  DOCKER_COMPOSE="-f $PROJECT_DIR/docker-compose.dev.yml"
+  CONTAINER_NAME="panther-dev"
   if [ "$BUILD" = "true" ]; then
-    docker compose -f $PROJECT_DIR/docker-compose.dev.yml build panther-dev
+    docker compose $DOCKER_COMPOSE build $CONTAINER_NAME
   fi
-  docker compose -f $PROJECT_DIR/docker-compose.dev.yml \
-    run --rm -i panther-dev \
-      upload-documents $SKIP_IF_EXISTS --data-root /data-dir
 else
   usage
+  exit 1
 fi
+
+docker compose $DOCKER_COMPOSE \
+  run --rm -i $CONTAINER_NAME \
+    upload-documents $SKIP_IF_EXISTS --data-root /data-dir

@@ -37,16 +37,18 @@ while getopts "hb" opt; do
 done
 
 if [ "$MODE" = "production" ]; then
-  docker compose -f $PROJECT_DIR/docker-compose.yml \
-    run --rm -i panther \
-      restore-metadata
+  DOCKER_COMPOSE="-f $PROJECT_DIR/docker-compose.yml"
+  CONTAINER_NAME="panther"
 elif [ "$MODE" = "development" ]; then
+  DOCKER_COMPOSE="-f $PROJECT_DIR/docker-compose.dev.yml"
+  CONTAINER_NAME="panther-dev"
   if [ "$BUILD" = "true" ]; then
-    docker compose -f $PROJECT_DIR/docker-compose.dev.yml build panther-dev
+    docker compose $DOCKER_COMPOSE build $CONTAINER_NAME
   fi
-  docker compose -f $PROJECT_DIR/docker-compose.dev.yml \
-    run --rm -i panther-dev \
-      restore-metadata
 else
   usage
+  exit 1
 fi
+docker compose $DOCKER_COMPOSE \
+  run --rm -i $CONTAINER_NAME \
+    restore-metadata

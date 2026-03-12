@@ -5,9 +5,9 @@ PROJECT_DIR="$SCRIPT_DIR/.."
 
 # default vars.
 TARGET=ALL
-NUM_MULTI_PROCESSORS="-m 1"
 OVERWRITE=""
 BUILD="false"
+KIND_OF_DATA="dummy"
 
 list_of_targets(){
     echo "-t {target}: Specify the target for crawling. Supported targets are: ALL, APP_DOC, AMND, RSPN, ETC, NOTICE"
@@ -64,11 +64,11 @@ list_of_targets(){
 }
 
 usage(){
-    echo "Usage: $0 [-n {num_multi_processors}] [-o] [-t {target}] [ -d ]"
-    echo "  -n: Number of multi-processors to use for crawling. Default is 1. max is 4"
+    echo "Usage: $0 [-o] [-t {target}] [ -d ] [ -k {kind_of_data} ]"
     echo "  -o: Overwrite existing data in the data-dir. WARNING: This will delete all existing data in the data-dir."
     echo "  -t: Specify the target for crawling. default is ALL"
     echo "  -d: output_dir. overwrite DATA_DIR in .env"
+    echo "  -k: Specify the kind of data. default is dummy, choices=dummy or real. overwrite KIND_OF_DATA in .env"
     echo 
     echo "for development, MODE, SRC_DIR, DATA_DIR must be defined in .env file."
     echo "for production, these variables are imported in docker-compose.yml."
@@ -77,11 +77,8 @@ usage(){
 # MODE, SRC_DIR, DATA_DIR must be defined in .env file.
 source $PROJECT_DIR/.env
 
-while getopts "blon:t:d:" opt; do
+while getopts "blon:t:d:k:" opt; do
   case $opt in
-    n)
-      NUM_MULTI_PROCESSORS="-m $OPTARG"
-      ;;
     o)
       OVERWRITE="-o"
       ;;
@@ -90,6 +87,9 @@ while getopts "blon:t:d:" opt; do
       ;;
     d)
       DATA_DIR="$OPTARG"
+      ;;
+    k)
+      KIND_OF_DATA="$OPTARG"
       ;;
     l)
       list_of_targets
@@ -137,18 +137,36 @@ case $TARGET in
 esac
 
 if [ "$MODE" = "production" ]; then
-  docker compose -f $PROJECT_DIR/docker-compose.yml \
-    run --rm -i mona \
-      $OVERWRITE $NUM_MULTI_PROCESSORS \
-      /src-dir /data-dir $TARGET_CODES
+  DOCKER_COMPOSE="-f $PROJECT_DIR/docker-compose.yml"
+  CONTAINER_NAME="mona"
+  MODE_OPT="--mode production"
 elif [ "$MODE" = "development" ]; then
-  if [ "$BUILD" = "true" ]; then
-    docker compose -f $PROJECT_DIR/docker-compose.dev.yml build mona-dev
+  DOCKER_COMPOSE="-f $PROJECT_DIR/docker-compose.dev.yml"
+  CONTAINER_NAME="mona-dev"
+  if [ "$KIND_OF_DATA" = "dummy" ]; then
+    MODE_OPT="--mode development"
+  else
+    MODE_OPT="--mode production"
   fi
-  docker compose -f $PROJECT_DIR/docker-compose.dev.yml \
-    run --rm -i mona-dev \
-      $OVERWRITE $NUM_MULTI_PROCESSORS \
-      /src-dir /data-dir $TARGET_CODES --mode development
+
+  if [ "$BUILD" = "true" ]; then
+    docker compose $DOCKER_COMPOSE build $CONTAINER_NAME
+  fi
 else
   usage
+  exit 1
 fi
+
+echo Options
+echo yml=$DOCKER_COMPOSE
+echo container=$CONTAINER_NAME
+echo overwrite=$OVERWRITE
+echo src=/src-dir
+echo dst=/data-dir
+echo targets=$TARGET_CODES
+echo mode=$MODE_OPT
+
+docker compose $DOCKER_COMPOSE \
+  run --rm -i $CONTAINER_NAME \
+    $OVERWRITE $NUM_MULTI_PROCESSORS \
+    /src-dir /data-dir $TARGET_CODES $MODE_OPT
