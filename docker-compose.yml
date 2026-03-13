@@ -57,6 +57,8 @@ services:
       - ${LOG_DIR_JOKER}:/var/log/joker
       - ${DATA_DIR}:/data-dir
       - ${EXTRA_DATA_DIR}:/extra-dir
+    depends_on:
+      - es01
 
   es01:
     image: ghcr.io/hyperion13th144m/phantom-elasticsearch:main
@@ -84,6 +86,9 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
     ports:
       - ${NGINX_PORT}:8080
+    depends_on:
+      - joker
+      - fox
 
 volumes:
   es-data:
