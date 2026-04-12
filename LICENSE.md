@@ -1,4 +1,4 @@
-# Phantom License 1.0
+# License 1.0
 Copyright (c) 2026 hyperion13th144m@gmail.com
 
 ---
@@ -6,7 +6,7 @@ Copyright (c) 2026 hyperion13th144m@gmail.com
 ## English Version
 
 ### 1. Grant of Permission
-The software "Phantom" (the "Software") may be used, copied, modified, and redistributed solely for Non-Commercial Use under the terms of this License.
+The software may be used, copied, modified, and redistributed solely for Non-Commercial Use under the terms of this License.
 
 ### 2. Scope of Non-Commercial Use
 "Non-Commercial Use" includes the following:
@@ -29,7 +29,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ## 日本語版
 
 ### 1. 許諾
-本ソフトウェア「Phantom」（以下「本ソフトウェア」）は、本ライセンスの条件に従う場合に限り、非商用目的での利用、複製、改変および再配布を許諾する。
+本ソフトウェアは、本ライセンスの条件に従う場合に限り、非商用目的での利用、複製、改変および再配布を許諾する。
 
 ### 2. 非商用利用の範囲
 「非商用利用」には、以下を含むものとする。

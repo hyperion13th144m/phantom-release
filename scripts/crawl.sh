@@ -3,170 +3,19 @@
 SCRIPT_DIR=$(dirname $0)
 PROJECT_DIR="$SCRIPT_DIR/.."
 
-# default vars.
-TARGET=ALL
-OVERWRITE=""
-BUILD="false"
-KIND_OF_DATA="dummy"
-
-list_of_targets(){
-    echo "-t {target}: Specify the target for crawling. Supported targets are: ALL, APP_DOC, AMND, RSPN, ETC, NOTICE"
-    echo "Supported target codes are:"
-
-    echo
-    echo "NOTICE"
-    echo -e "\tA101"     特許査定
-    echo -e "\tA102"     拒絶査定
-    echo -e "\tA1131"    拒絶理由通知書
-    echo -e "\tA1191"    補正却下の決定
-    #echo -e "\tA1192"    補正却下の決定
-    echo -e "\tA130"     引用非特許文献
-    echo -e "\tA2242623" 実用新案技術評価の通知
-
-    echo 
-    echo "APP_DOC"
-    echo -e "\tA163"  特許願
-    echo -e "\tA263"  実用新案登録願
-    echo -e "\tA1631" 翻訳文提出書
-    echo -e "\tA1632" 国内書面
-    #echo -e "\tA2633", 図面の提出書（実案）は対象外(データないので確認できない)
-    echo -e "\tA1634" 国際出願翻訳文提出書
-    #echo -e "\tA1635", 国際出願翻訳文提出書（職権）は対象外(データないので確認できない)
-
-    echo
-    echo "AMND"
-    echo -e "\tA151"   手続補正書（方式）,手続補正書
-    echo -e "\tA1523"  手続補正書 特許
-    echo -e "\tA2523"  手続補正書 実案
-    #echo -e "\tA1524"  誤訳訂正書
-    #echo -e "\tA1525"  特許協力条約第１９条補正の翻訳文提出書
-    echo -e "\tA1529"  特許協力条約第３４条補正の翻訳文提出書
-    #echo -e "\tA1526"  特許協力条約第１９条補正の翻訳文提出書（職権）
-    #echo -e "\tA15210" 特許協力条約第３４条補正の翻訳文提出書（職権）
-    echo -e "\tA1527"  特許協力条約第１９条補正の写し提出書
-    echo -e "\tA15211" 特許協力条約第３４条補正の写し提出書
-    #echo -e "\tA1528"  特許協力条約第１９条補正の写し提出書（職権）
-    #echo -e "\tA15212" 特許協力条約第３４条補正の写し提出書（職権）
-
-    echo
-    echo "RSPN"
-    echo -e "\tA153" 意見書
-    #echo -e "\tA159" 弁明書
-
-    echo
-    echo "ETC"
-    echo -e "\tA1781" 上申書
-    echo -e "\tA1871" 早期審査に関する事情説明書
-    echo -e "\tA1872" 早期審査に関する事情説明補充書
-
-    echo
-    echo "ALL 以上の全て"
-}
-
-usage(){
-    echo "Usage: $0 [-o] [-t {target}] [ -d ] [ -k {kind_of_data} ]"
-    echo "  -o: Overwrite existing data in the data-dir. WARNING: This will delete all existing data in the data-dir."
-    echo "  -t: Specify the target for crawling. default is ALL"
-    echo "  -d: output_dir. overwrite DATA_DIR in .env"
-    echo "  -k: Specify the kind of data. default is dummy, choices=dummy or real. overwrite KIND_OF_DATA in .env"
-    echo 
-    echo "for development, MODE, SRC_DIR, DATA_DIR must be defined in .env file."
-    echo "for production, these variables are imported in docker-compose.yml."
-}
-
-# MODE, SRC_DIR, DATA_DIR must be defined in .env file.
-source $PROJECT_DIR/.env
-
-while getopts "blon:t:d:k:" opt; do
-  case $opt in
-    o)
-      OVERWRITE="-o"
-      ;;
-    t)
-      TARGET="$OPTARG"
-      ;;
-    d)
-      DATA_DIR="$OPTARG"
-      ;;
-    k)
-      KIND_OF_DATA="$OPTARG"
-      ;;
-    l)
-      list_of_targets
-      exit 0
-      ;;
-    b)
-      BUILD="true"
-      ;;
-    *)
-      usage
-      exit 1
-      ;;
-  esac
-done
-
-PAT_APP_DOC_CODES="A163 A263 A1631 A1632 A1634"
-PAT_AMND="A151 A1523 A1529 A1527 A15211 A2523"
-PAT_RSPN="A153"
-PAT_ETC="A1781 A1871 A1872"
-NOTICE="A101 A102 A1131 A1191 A130 A2242623"
-ALL="$PAT_APP_DOC_CODES $PAT_AMND $PAT_RSPN $PAT_ETC $NOTICE"
-case $TARGET in
-  "ALL")
-    TARGET_CODES="$ALL"
-    ;;
-  "APP_DOC")
-    TARGET_CODES="$PAT_APP_DOC_CODES"
-    ;;
-  "AMND")
-    TARGET_CODES="$PAT_AMND"
-    ;;
-  "RSPN")
-    TARGET_CODES="$PAT_RSPN"
-    ;;
-  "ETC")
-    TARGET_CODES="$PAT_ETC"
-    ;;
-  "NOTICE")
-    TARGET_CODES="$NOTICE"
-    ;;
-  *)
-    echo "Invalid target specified. Supported targets are: ALL, APP_DOC, AMND, RSPN, ETC, NOTICE"
-    exit 1
-    ;;
-esac
+MODE=${1:-development}
 
 if [ "$MODE" = "production" ]; then
   DOCKER_COMPOSE="-f $PROJECT_DIR/docker-compose.yml"
-  CONTAINER_NAME="mona"
-  MODE_OPT="--mode production"
+  CONTAINER_NAME="crow"
 elif [ "$MODE" = "development" ]; then
   DOCKER_COMPOSE="-f $PROJECT_DIR/docker-compose.dev.yml"
-  CONTAINER_NAME="mona-dev"
-  if [ "$KIND_OF_DATA" = "dummy" ]; then
-    MODE_OPT="--mode development"
-  else
-    MODE_OPT="--mode production"
-  fi
-
-  if [ "$BUILD" = "true" ]; then
-    docker compose $DOCKER_COMPOSE build $CONTAINER_NAME
-  fi
+  CONTAINER_NAME="crow-dev"
 else
-  usage
+  echo "Invalid MODE: $MODE. Please set MODE to 'production' or 'development' in .env file."
   exit 1
 fi
 
-echo Options
-echo yml=$DOCKER_COMPOSE
-echo container=$CONTAINER_NAME
-echo overwrite=$OVERWRITE
-echo src=/src-dir
-echo dst=/data-dir
-echo targets=$TARGET_CODES
-echo mode=$MODE_OPT
 
 docker compose $DOCKER_COMPOSE \
-  run --rm -i $CONTAINER_NAME \
-    $OVERWRITE $NUM_MULTI_PROCESSORS \
-    /src-dir /data-dir $TARGET_CODES $MODE_OPT
+  run --rm -i $CONTAINER_NAME -m crow.cli $@

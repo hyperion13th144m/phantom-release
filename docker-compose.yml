@@ -1,64 +1,109 @@
 services:
+  crow:
+    container_name: crow
+    image: ghcr.io/hyperion13th144m/phantom-crow:main
+    environment:
+      LANG: ja_JP.UTF-8
+      TZ: Asia/Tokyo
+      LOG_DIR_CROW: /var/log/crow
+      NAVI_ORCHESTRATION_WEBHOOK_URL: ${NAVI_ORCHESTRATION_WEBHOOK_URL:-}
+      NAVI_ORCHESTRATION_WEBHOOK_SECRET: ${ORCHESTRATION_WEBHOOK_SECRET:-}
+      NAVI_ORCHESTRATION_WEBHOOK_TIMEOUT_SECONDS: ${NAVI_ORCHESTRATION_WEBHOOK_TIMEOUT_SECONDS:-5}
+    volumes:
+      - ${SRC_DIR}:/src-dir
+      - ${DATA_DIR}:/data-dir
+      - ${LOG_DIR_CROW}:/var/log/crow
+
   mona:
     container_name: mona
     image: ghcr.io/hyperion13th144m/phantom-mona:main
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
+      LOG_DIR_MONA: /var/log/mona
     volumes:
-      - ${SRC_DIR}:/src-dir
       - ${DATA_DIR}:/data-dir
       - ${LOG_DIR_MONA}:/var/log/mona
-    tty: true
-  
+   
+  navi:
+    container_name: navi
+    image: ghcr.io/hyperion13th144m/phantom-navi:main
+    environment:
+      CROW_URL: http://crow:8000
+      PANTHER_URL: http://panther:8000
+      LANG: ja_JP.UTF-8
+      TZ: Asia/Tokyo
+      ORCHESTRATION_WEBHOOK_SECRET: ${ORCHESTRATION_WEBHOOK_SECRET:-}
+      LOG_DIR_NAVI: /var/log/navi
+    volumes:
+      - ${LOG_DIR_NAVI}:/var/log/navi
+
+
   panther:
     container_name: panther
     image: ghcr.io/hyperion13th144m/phantom-panther:main
     environment:
-      ES_URL: http://es01:9200
+      MONA_URL: http://mona:8000
+      ES_URL: http://es:9200
       ES_USER: ${ES_USER}
       ES_PASSWORD: ${ES_PASSWORD}
       ES_INDEX: ${ES_INDEX}
       SQLITE_PATH: /extra-dir/${SQLITE_NAME}
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
+      LOG_DIR_PANTHER: /var/log/panther
     volumes:
       - ${DATA_DIR}:/data-dir
       - ${LOG_DIR_PANTHER}:/var/log/panther
-      - ${EXTRA_DATA_DIR}:/extra-dir
-    tty: true
 
   fox:
     container_name: fox
     image: ghcr.io/hyperion13th144m/phantom-fox:main
     environment:
       NODE_ENV: production
+      ES_URL: http://es:9200
+      ES_USER: ${ES_USER}
+      ES_PASSWORD: ${ES_PASSWORD}
+      ES_INDEX: ${ES_INDEX}
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
+      MONA_URL: http://mona:8000
     volumes:
-      - ${DATA_DIR}:/data-dir
       - ${LOG_DIR_FOX}:/var/log/fox
 
   joker:
     container_name: joker
     image: ghcr.io/hyperion13th144m/phantom-joker:main
     environment:
-      NODE_ENV: production
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
-      ES_URL: http://es01:9200
+      ES_URL: http://es:9200
       ES_USER: ${ES_USER}
       ES_PASSWORD: ${ES_PASSWORD}
       ES_INDEX: ${ES_INDEX}
-      NEXT_PUBLIC_IMAGE_BASE_URL: /images
-      NEXT_PUBLIC_DOCUMENT_BASE_URL: /docs
-      SQLITE_PATH: /extra-dir/${SQLITE_NAME}
+      NEXT_PUBLIC_DOCUMENT_BASE_URL: /fox/docs
+      MONA_URL: http://mona:8000
     volumes:
       - ${LOG_DIR_JOKER}:/var/log/joker
-      - ${DATA_DIR}:/data-dir
-      - ${EXTRA_DATA_DIR}:/extra-dir
     depends_on:
-      - es01
+      - es
+
+  skull:
+    container_name: skull
+    image: ghcr.io/hyperion13th144m/phantom-skull:main
+    environment:
+      LANG: ja_JP.UTF-8
+      TZ: Asia/Tokyo
+      ES_URL: http://es:9200
+      ES_USER: ${ES_USER}
+      ES_PASSWORD: ${ES_PASSWORD}
+      ES_INDEX: ${ES_INDEX}
+      NEXT_PUBLIC_DOCUMENT_BASE_URL: /fox/docs
+      NEXT_PUBLIC_APP_URL: http://skull:3000/skull
+      SQLITE_PATH: /extra-dir/${SQLITE_NAME}
+    volumes:
+      - ${LOG_DIR_SKULL}:/var/log/skull
+      - ${EXTRA_DATA_DIR}:/extra-dir
 
   es01:
     image: ghcr.io/hyperion13th144m/phantom-elasticsearch:main
@@ -82,13 +127,16 @@ services:
     container_name: phantom-nginx
     image: nginx:1.29.6-alpine
     volumes:
-      - ${DATA_DIR}:/usr/share/nginx/html
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./infra/nginx/index.html:/usr/share/nginx/html/index.html
     ports:
       - ${NGINX_PORT}:8080
     depends_on:
       - joker
       - fox
+      - skull
+      - mona
+      - navi
 
 volumes:
   es-data:

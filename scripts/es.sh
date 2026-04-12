@@ -1,52 +1,32 @@
 #!/bin/bash
 
+set -eu
+
+SCRIPT_DIR=$(dirname "$0")
+_PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
+PROJECT_ROOT=$(readlink -f "$_PROJECT_ROOT")
+
 INDEX=patent-documents
 ES_HOST=localhost
 ES_PORT=9200
+MODE=production
+WAIT_SECONDS=60
+FORCE_RECREATE=0
 
-function list () {
-  curl -X GET 'localhost:9200/_cat/indices?v'
-}
-
-function create() {
-  curl -X PUT "$ES_HOST:$ES_PORT/$INDEX" \
-     -H 'Content-Type: application/json' \
-     -d '
-      {
-        "settings": {
-          "number_of_shards": 1,
-          "number_of_replicas": 0
-        }
-      }' 
-
-}
-
-function delete() {
-  curl -X DELETE "$ES_HOST:$ES_PORT/$INDEX?pretty" 
-}
-
-function search() {
-  curl -sS -X GET "$ES_HOST:$ES_PORT/$INDEX/_search?pretty" \
-       -H 'Content-Type: application/json' \
-       -d '
-{
-  "query":{
-    "match_all":{
-    }
-  },
-  "from":0,
-  "size":3
-}'
-}
-
-while getopts e:p:i: OPT
+while getopts fm:e:p:i:w: OPT
 do
   case $OPT in
+  f) FORCE_RECREATE=1
+     ;;
+  m) MODE=$OPTARG
+     ;;
   e) ES_HOST=$OPTARG
      ;;
   p) ES_PORT=$OPTARG
      ;;
   i) INDEX=$OPTARG
+     ;;
+  w) WAIT_SECONDS=$OPTARG
      ;;
   *) exit 1
      ;;
@@ -55,22 +35,63 @@ done
 
 shift $((OPTIND - 1)) # オプション部分をスキップ
 
-case $1 in
-  "list")
-    list
-    ;;
-  "delete")
-    delete
-    ;;
-  "create")
-    create
-    ;;
-  "search")
-    search
-    ;;
-  *)
-    list
-    exit 1
-  ;;
-esac
+MAPPING_FILE=${1:-$PROJECT_ROOT/infra/es/generated/mapping.json}
 
+if [ "$MODE" = "production" ]; then
+  CONFIG=docker-compose.yml
+  SERVICE=es
+else
+  CONFIG=docker-compose.dev.yml
+  SERVICE=es-dev
+fi
+
+echo "Waiting for Elasticsearch to become ready..."
+STARTED_AT=$(date +%s)
+while true
+do
+  if docker compose -f "$PROJECT_ROOT/$CONFIG" exec -T "$SERVICE" \
+    curl -fsS "http://$ES_HOST:$ES_PORT/_cluster/health?wait_for_status=yellow&timeout=1s" >/dev/null 2>&1; then
+    break
+  fi
+
+  NOW=$(date +%s)
+  if [ $((NOW - STARTED_AT)) -ge "$WAIT_SECONDS" ]; then
+    echo "Elasticsearch did not become ready within ${WAIT_SECONDS} seconds." >&2
+    exit 1
+  fi
+
+  sleep 2
+done
+
+if docker compose -f "$PROJECT_ROOT/$CONFIG" exec -T "$SERVICE" \
+  curl -fsS "http://$ES_HOST:$ES_PORT/$INDEX" >/dev/null 2>&1; then
+  if [ "$FORCE_RECREATE" -eq 1 ]; then
+    echo "Recreating index with force option: $INDEX"
+    docker compose -f "$PROJECT_ROOT/$CONFIG" exec -T "$SERVICE" \
+      curl -fsS -X DELETE "http://$ES_HOST:$ES_PORT/$INDEX" >/dev/null 2>&1 || true
+  else
+  echo "Index already exists: $INDEX"
+  echo "Skipping mapping upload."
+  exit 0
+  fi
+fi
+
+echo "Creating index with mapping: $INDEX"
+docker compose -f "$PROJECT_ROOT/$CONFIG" cp "$MAPPING_FILE" "$SERVICE:/tmp/mapping.json" >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+  echo "Failed to copy mapping file to container." >&2
+  exit 1
+else
+    echo "Mapping file copied to container successfully."
+fi
+
+docker compose -f "$PROJECT_ROOT/$CONFIG" exec -T "$SERVICE" \
+  curl -fsS -X PUT "http://$ES_HOST:$ES_PORT/$INDEX" \
+  -H 'Content-Type: application/json' \
+  -d @/tmp/mapping.json >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+  echo "Failed to create index with mapping." >&2
+  exit 1
+else
+    echo "Index created with mapping successfully."
+fi

@@ -8,28 +8,31 @@ phantom-release provides the minimal runtime environment (compose, scripts, conf
 特許出願、意見書等の特許文書の全文検索システム
 [インターネット出願ソフト](https://www.pcinfo.jpo.go.jp/site/)を使って提出/受信した明細書、意見書などを検索するシステム作ってみた。
 
-## 特徴
+## 1. 特徴
  - 明細書、意見書等を全文検索
  - それってjplatpatで十分では？ → 未公開の自社・顧客案件を検索したいときに使える
  - 検索結果は図面一覧がでるので、図面をぱっとみで探したい人は幸せかもしれん
  - 文書単位（出願単位ではない）で担当者、タグを付けられる
 
-### 全文検索
+### 1.1 全文検索
 空白区切りでAND検索。こんな感じで結果一覧がでてくる。明細書の図面のサムネールが表示される。
-![検索イメージ](./assets/0search.jpg)
+
+<img src="./assets/0search.jpg" alt="検索イメージ" width="820">
 
 文書名などで絞込ができる。
-![絞込イメージ](./assets/1filter.jpg)
+
+<img src="./assets/1filter.jpg" alt="絞込イメージ" width="820">
 
 
 「詳細」をクリックするとjplatpat っぽく文書を表示する。
-![詳細イメージ](./assets/2detail.jpg)
 
-### 書誌検索
+<img src="./assets/2detail.jpg" alt="詳細イメージ" width="420">
+
+### 1.2 書誌検索
 発明者、出願人などで検索できる。出願単位で文書が纏められて表示される。
-![書誌検索イメージ](./assets/3bib.jpg)
+<img src="./assets/3bib.jpg" alt="書誌検索イメージ" width="700">
 
-### メタデータ編集
+### 1.3 メタデータ編集
 担当者、タグ、整理番号をメタデータっていってます。
 
 全文検索は、提出/受領した文書に書いてあることが検索対象です。だけど、
@@ -39,13 +42,15 @@ phantom-release provides the minimal runtime environment (compose, scripts, conf
 なんてことがあるので、それを文書単位で付けられるようにした。
 
 メタデータの編集はこんな感じ
-![メタデータ編集イメージ](./assets/4edit.jpg)
+
+<img src="./assets/5-3-metadata-edit.jpg" alt="メタデータ編集イメージ" width="520">
 
 メタデータを使った絞込
-![メタデータで検索イメージ](./assets/5searchfilter.jpg)
+
+<img src="./assets/5searchfilter.jpg" alt="メタデータで検索イメージ" width="820">
                                    
-## 動作環境
-### 動作イメージ
+## 2. 動作環境
+### 2.1 動作イメージ
 ```mermaid
 flowchart LR
     A[ブラウザ] <--> B[全文検索システム]
@@ -55,10 +60,10 @@ flowchart LR
    * インターネット出願ソフトのパソコンに共有フォルダを設定し、全文検索システムから共有フォルダ経由でアクセス
    * FTP, SSHなどなんでもすきな方法使ってok
  - ユーザはブラウザを使って、全文検索システムにアクセスし、検索する。
- - **全文検索システムは、ID/パスワードとか認証はない,誰でもアクセスできる**
+ - **全文検索システムは、ID/パスワードとか認証はない,誰でもアクセスできる** 必要ならnginxのbasic認証とか、SSL設定してください。
  - 社内 LAN で使用することを想定している。VPS に全文検索システムをセットアップしてもいいけど、VPNだけでアクセスできるようにする。
 
-### 動作環境
+### 2.2 必要ハードウェア・ソフトウェア
  全文検索システムのスペック。たくさんの動作環境でテストしてない。全文検索にelasticsearchを使っているので、elasticsearchの推奨スペックを参考にすればいいかも？ いま動かしてる環境は次のとおり。
  - CPU: AMD Ryzen 3 4300G
  - Memory: 32GB
@@ -70,8 +75,8 @@ flowchart LR
  
  Docker が動作すればok, Windows WSL, Docker Desktop for Windows でも動くかも。
 
-## 必要ソフトウェアのインストール
-### 1. Docker
+## 3. 必要ソフトウェアのインストール
+### 3.1 Docker
 公式サイトみてインストールして・・・
 [Docker公式サイト](https://docs.docker.com/engine/install/ubuntu/) より引用
 #### Setup Docker's apt repository
@@ -126,14 +131,14 @@ This message shows that your installation appears to be working correctly.
 ...
 ```
 
-### 2. git
+### 3.2 git
 ```bash
 sudo apt update
 sudo apt install -y git
 ```
 
-## 全文検索システムのインストール・設定
-### インターネット出願ソフトが動作するパソコンからデータをコピーする
+## 4. 全文検索システムのインストール・設定
+### 4.1 インターネット出願ソフトが動作するパソコンからデータをコピーする
 全文検索システムの適当なディレクトリにデータをコピーする。
 ssh, SFTP, sambaなんでもOK。
 インターネット出願ソフトのデータ（のバックアップとかでもいいけど）があるディレクトリを共有し、全文検索システムがその共有ディレクトリをマウントしてもよい。
@@ -145,16 +150,17 @@ find /src
 ```
 こんな感じでC:\JPODATA とかにあるデータが全文検索システムからみえればおｋ
 
-### 全部検索システムのインストール
+### 4.2 全文検索システムのインストール
 全文検索システムは、一般ユーザーで動作する。システムを動作するディレクトリを適当に決める。
 100GB以上空きがあるようなディレクトリ推奨. ここでは /home/hoge にインストールする。
 
 ```bash
 cd /home/hoge
-git clone https://github.com/hyperion13th144m/phantom-release
+git clone https://github.com/hyperion13th144m/phantom-release -b v1.0.0
 ```
+-b v.1.0.0 はバージョン番号。
 
-### 全部検索システムの設定
+### 4.3 全文検索システムの設定
 設定ファイルをコピーし編集する
 ```bash
 cd phantom-release
@@ -171,15 +177,21 @@ SRC_DIR=/src
 NGINX_PORT=8080
 
 ### do not change below values
-MODE=production
-KIND_OF_DATA=real
 DATA_DIR=./var/data
 EXTRA_DATA_DIR=./var/extra-data
+LOG_DIR_CROW=./var/log/crow
 LOG_DIR_MONA=./var/log/mona
+LOG_DIR_NAVI=./var/log/navi
 LOG_DIR_FOX=./var/log/fox
 LOG_DIR_PANTHER=./var/log/panther
 LOG_DIR_JOKER=./var/log/joker
+LOG_DIR_SKULL=./var/log/skull
+LOG_DIR_NOIR=./var/log/noir
 SQLITE_NAME=extra-data.sqlite3
+
+ORCHESTRATION_WEBHOOK_SECRET=1234567890abcdef
+NAVI_ORCHESTRATION_WEBHOOK_URL=http://navi:8000/orchestration/crow-completed
+NAVI_ORCHESTRATION_WEBHOOK_TIMEOUT_SECONDS=5
 
 ES_USER=elastic
 ES_PASSWORD=elastic
@@ -193,72 +205,118 @@ docker compose pull
 ```
 全文検索システムを動作させるためのイメージファイルをダウンロードする。2GBぐらい。
 
-### 全文検索システム起動
+## 4.4 全文検索システム起動
 ```bash
 ./scripts/start.sh
 ```
+`start.sh` は各種サービスを起動します。
 
-### 初回設定
-./scripts/start.sh のあとしばらく時間をおいて、elasticsearch のインデックスを作成する。
-(一回実行すればいい。バージョンアップのときに実行することがあるかも。)
-```
+### 4.5 (補足) マッピングを再適用したいとき
+start.sh は Elasticsearch の起動完了を待って、`infra/es/generated/mapping.json` を使ったインデックス作成まで自動で行う。
+すでにインデックスが存在する場合は、既存データを残したままマッピング適用をスキップする。
+インデックスが未作成の状態でマッピングを適用したいときは以下を実行する。
+```bash
 ./scripts/setup.sh
 ```
-これでセットアップ完了
-
-start.sh のあとすぐに実行すると、elasticsearch が起動完了してないので失敗することも。
-
-
-## 全文検索システムの運用
- 以下は、全文検索システムの運用に必要な作業。
- - 特許文書を収集する
- - 特許文書をデータベースに登録する
- - バックアップ
- 収集、登録は、スクリプトを cron 実行してもよい。
-
-### 特許文書の収集
-インターネット出願ソフトで送信・受信したファイルが増えるたびとか適当な間隔で, 以下を実行する。
+既存インデックスを削除して強制的に再作成したいときは、`-f` を付けて実行する。
 ```bash
-./scripts/crawl.sh
+./scripts/es.sh -f
 ```
 
-文書の数やハードウェアスペックによるが、明細書4,500件、その他の文書15,000件ぐらいで、2時間ぐらいかかった。一回収集した文書は、2回目以降の収集で対象にならない。2回目以降は、増えた分だけ収集する感じ。
 
-### 特許文書をデータベースに登録する
-```bash
-./scripts/upload.sh
+## 5. 全文検索システムの機能
+全文検索システムを起動しているコンピュータにブラウザでアクセスします。
 ```
-こちらは、収集ほど時間は掛からない。
+http://192.168.1.1:8080
+```
+192.168.1.1 はコンピュータのIPアドレス、8080 は.env NGINX_PORT に指定したポート番号です。SSL (https) ではありません、認証もありません。
 
+次の3つのメニューがあります
+- 全文検索
+- メタデータ編集
+- 管理画面
 
-### バックアップ
-メタデータは、phantom-release/var/extra-data/ ディレクトリに保存されている。
-このファイルをどこかコピーとっておく。
+<img src="./assets/5-menu.jpg" alt="menuイメージ" width="760">
 
+### 5.1 全文検索
+全文検索のHomeページ
+<img src="./assets/5-1fulltext.jpg" alt="全文検索イメージ" width="820">
+
+特許文書の検索をすることができます。
+ - 簡易検索
+   - キーワードで特許文書を検索することができます。
+ - 書誌検索
+   - 書誌事項で特許文書を検索します。
+
+### 5.2 管理画面
+#### 管理画面
+<img src="./assets/5-2-mgt-1.jpg" alt="管理画面イメージ1" width="820">
+
+この管理画面では、
+ - クローリング開始：インターネット出願ソフトで送受信したファイルを収集し、データベースに登録することができる
+ - 定期実行予約：クローリング開始を定期的に実行することができる
+
+基本的には、[Crow の管理画面へ] だけ使えば良い。
+
+#### 収集・登録
+「クローリング開始」のdoc_codes に 「ALL」を選択し、「ジョブ開始」をクリックする。
+
+<img src="./assets/5-2-crawl.jpg" alt="管理画面イメージ2" width="320">
+
+収集がスタートするとこのような画面になる。収集の進捗がわかる。
+
+<img src="./assets/5-2-crawling-status.jpg" alt="管理画面イメージ2-2" width="420">
+
+画面移動してもOKなので、「オーケストレーションの管理画面へ」で収集したファイルの数や、登録に成功したファイルの数などがわかる。
+
+<img src="./assets/5-2-orchestration.jpg" alt="管理画面イメージ2-3" width="820">
+<img src="./assets/5-2-orchestration-done.jpg" alt="管理画面イメージ2-4" width="820">
+
+文書の数やハードウェアスペックによるが、明細書4,500件、その他の文書15,000件ぐらいで、2時間ぐらいかかった。
+
+#### 定期実行予約
+<img src="./assets/5-2-schedule.jpg" alt="管理画面イメージ3" width="260">
+
+「ジョブ開始」は、インターネット出願ソフトで送受信したファイルが増えるたびに実行する必要がある。めんどうなら、「定期実行予約」で
+ - 実行方式：毎日指定時刻
+ - 毎日実行時刻：適当な時間
+ - doc_codes： ALL
+ を指定し、「予約を作成」をクリックする。
+
+基本はこれで特許文書の収集、登録が行われる。Panther,Monaの管理画面で作業する必要はない。
+
+### 5.3 メタデータ管理
+<img src="./assets/5-3-metadata.jpg" alt="メタデータ管理イメージ" width="760">
+
+特許文書に、担当者、タグ、追加の整理番号、memoを付与できます。これらの担当者等をメタデータといってます。
+ - メタデータ編集: 担当者等を付与することができる
+ - 再同期/レストア：メタデータ編集でメタデータを付与したが、なんらかの原因でデータベースに反映されなかった場合、そのメタデータをデータベースに反映させることができる
+ - バックアップ：メタデータのバックアップをすることができます
+
+メタデータは定期的にバックアップしてください。なお
 phantom-release/var/data に全文検索で表示される文書や画像が保存されているが、これはバックアップとらなくてもよい。
 仮にvar/data が壊れたりしても、収集・登録をやり直やり直せば良いため。
 
 
-### メタデータの復旧
-バックアップしたファイルを　var/extra-data に保存する。
-次のようにスクリプトを実行する。
+## 6. データが壊れたときなど復旧
 ```bash
-./scripts/setup.sh
-./scripts/crawl.sh
-./scripts/upload.sh
-./scripts/extra-data.sh
+./scripts/start.sh
+./scripts/es.sh -f
 ```
+ついで管理画面にて ［Crowの管理画面へ］→［クローリング開始］
+- doc_codes: ALL
+- 「既存ファイルがあっても上書きしてcrawlする」にチェック
+として「ジョブ開始」
 
-## 検索
-PCのブラウザから http://192.168.1.1:8080 にアクセスする。
-192.168.1.1 は 全文検索システムをインストールしたUbuntuのIPアドレスに置き換えて。
+メタデータ管理にて
+ - 「バックアップ」
+ - ［リストア］
+ - ［ファイルの選択］をクリックしてバックアップしたデータを選択
+ - ［リストア］ボタンをクリックする
 
 
-- 簡易検索: スペース区切りで AND 検索。
-- 書誌検索: 発明者、詳細検などで検索
-- メタデータ編集: 文書単位で担当者、タグ、整理番号を追加する。
 
-## 取り込みされる文書
+## 7. 取り込みされる文書
 出願・提出済み、受領した文書が対象です。未出願・未提出のチェック中の文書は取り込まれない。
 次の文書が取り込まれる。
 - 発送系
@@ -288,7 +346,7 @@ PCのブラウザから http://192.168.1.1:8080 にアクセスする。
   * 早期審査に関する事情説明書
   * 早期審査に関する事情説明補充書
  
-## 注意事項
+## 8. 注意事項
 - インターネット出願ソフトのデータは、表示・検索用のデータを取り出すために参照される、変更は一切加えない。
 - テストは十分でない、素人が見よう見まねで作ってるのでいろいろバグあるとおもう。AIの力借りて作ってる。
 - インターネット出願ソフトと同様に表示されるようにしているが、まったく同じでない。特に発送系はほとんど調整してない。HTMLはあくまで参考用に。
@@ -298,5 +356,5 @@ PCのブラウザから http://192.168.1.1:8080 にアクセスする。
 - アプリで何らかの損害を被っても本アプリ作者は責任を負いません。
 - 取り込みでエラーがでたり、検索結果がおかしかったり、文書の表示がおかしかったら、レポートいただけると対応できるかも。レポートは [GitHub Issue](https://github.com/hyperion13th144m/phantom/issues) でできるとおもう。
 
-## License
+## 9. License
 詳細は、[ライセンス](LICENSE.md)をみてください。
