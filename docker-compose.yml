@@ -105,7 +105,7 @@ services:
       - ${LOG_DIR_SKULL}:/var/log/skull
       - ${EXTRA_DATA_DIR}:/extra-dir
 
-  es01:
+  es:
     image: ghcr.io/hyperion13th144m/phantom-elasticsearch:main
     container_name: phantom-elasticsearch
     environment:
