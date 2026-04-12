@@ -77,21 +77,19 @@ if docker compose -f "$PROJECT_ROOT/$CONFIG" exec -T "$SERVICE" \
 fi
 
 echo "Creating index with mapping: $INDEX"
-docker compose -f "$PROJECT_ROOT/$CONFIG" cp "$MAPPING_FILE" "$SERVICE:/tmp/mapping.json" >/dev/null 2>&1
-if [ $? -ne 0 ]; then
+if ! docker compose -f "$PROJECT_ROOT/$CONFIG" cp "$MAPPING_FILE" "$SERVICE:/tmp/mapping.json" >/dev/null 2>&1; then
   echo "Failed to copy mapping file to container." >&2
   exit 1
 else
-    echo "Mapping file copied to container successfully."
+  echo "Mapping file copied to container successfully."
 fi
 
-docker compose -f "$PROJECT_ROOT/$CONFIG" exec -T "$SERVICE" \
+if ! docker compose -f "$PROJECT_ROOT/$CONFIG" exec -T "$SERVICE" \
   curl -fsS -X PUT "http://$ES_HOST:$ES_PORT/$INDEX" \
   -H 'Content-Type: application/json' \
-  -d @/tmp/mapping.json >/dev/null 2>&1
-if [ $? -ne 0 ]; then
+  -d @/tmp/mapping.json >/dev/null 2>&1; then
   echo "Failed to create index with mapping." >&2
   exit 1
 else
-    echo "Index created with mapping successfully."
+  echo "Index created with mapping successfully."
 fi
