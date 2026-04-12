@@ -1,7 +1,7 @@
 services:
   crow:
     container_name: crow
-    image: ghcr.io/hyperion13th144m/phantom-crow:main
+    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:71b56fdd26f515fc73c500b30f10363318e87c2b45ba69fc126214aab1b840f0
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
@@ -16,7 +16,7 @@ services:
 
   mona:
     container_name: mona
-    image: ghcr.io/hyperion13th144m/phantom-mona:main
+    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:754186cf244b804a9c51f16b3c2a6956cd834f9e4adb32ba6739a02007d2e7a9
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
@@ -27,7 +27,7 @@ services:
    
   navi:
     container_name: navi
-    image: ghcr.io/hyperion13th144m/phantom-navi:main
+    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:ebeb8d23ccfcec3383b8ecb2f59e96780a15d5c923ea29e59d233aca66058d49
     environment:
       CROW_URL: http://crow:8000
       PANTHER_URL: http://panther:8000
@@ -41,7 +41,7 @@ services:
 
   panther:
     container_name: panther
-    image: ghcr.io/hyperion13th144m/phantom-panther:main
+    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:687aa7f59e01d961890f5a9c6057066ecdc2f9a076a3accae3c98853e4873a56
     environment:
       MONA_URL: http://mona:8000
       ES_URL: http://es:9200
@@ -58,7 +58,7 @@ services:
 
   fox:
     container_name: fox
-    image: ghcr.io/hyperion13th144m/phantom-fox:main
+    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:f8d31d229a008b58bbbfc6d9339bf598016b8bcfd63438a627317b37d68238f4
     environment:
       NODE_ENV: production
       ES_URL: http://es:9200
@@ -73,7 +73,7 @@ services:
 
   joker:
     container_name: joker
-    image: ghcr.io/hyperion13th144m/phantom-joker:main
+    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:590819e019696ca482554490230225b688a86fa6b07fd21c7277655a1952a0f0
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
@@ -106,7 +106,7 @@ services:
       - ${EXTRA_DATA_DIR}:/extra-dir
 
   es:
-    image: ghcr.io/hyperion13th144m/phantom-elasticsearch:main
+    image: ghcr.io/hyperion13th144m/phantom-elasticsearch@sha256:a829572348d6f57cd436c9f185c352841fc4b20f9675dc9602fe9652395accd7
     container_name: phantom-elasticsearch
     environment:
       discovery.type: single-node
