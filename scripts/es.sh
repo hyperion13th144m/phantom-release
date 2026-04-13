@@ -35,7 +35,7 @@ done
 
 shift $((OPTIND - 1)) # オプション部分をスキップ
 
-MAPPING_FILE=${1:-$PROJECT_ROOT/infra/es/generated/mapping.json}
+MAPPING_FILE=${1:-$PROJECT_ROOT/es/mapping.json}
 
 if [ "$MODE" = "production" ]; then
   CONFIG=docker-compose.yml
