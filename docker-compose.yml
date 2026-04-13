@@ -6,7 +6,7 @@ services:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
       LOG_DIR_CROW: /var/log/crow
-      NAVI_ORCHESTRATION_WEBHOOK_URL: ${NAVI_ORCHESTRATION_WEBHOOK_URL:-}
+      NAVI_ORCHESTRATION_WEBHOOK_URL: ${NAVI_ORCHESTRATION_WEBHOOK_URL:-http://navi:8000/orchestration/crow-completed}
       NAVI_ORCHESTRATION_WEBHOOK_SECRET: ${ORCHESTRATION_WEBHOOK_SECRET:-}
       NAVI_ORCHESTRATION_WEBHOOK_TIMEOUT_SECONDS: ${NAVI_ORCHESTRATION_WEBHOOK_TIMEOUT_SECONDS:-5}
     volumes:
@@ -16,18 +16,21 @@ services:
 
   mona:
     container_name: mona
-    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:0191e0c07698209d3c08f8049fa0e1225602d8de61773928c6431847009f9001
+    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:06289724bac402168e715f36cc38db3a4436e03a0e7c3632bed18aba71d94b2b
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
       LOG_DIR_MONA: /var/log/mona
+      NAVI_ORCHESTRATION_URL: ${NAVI_ORCHESTRATION_URL:-http://navi:8000/orchestration}
+      ORCHESTRATION_WEBHOOK_SECRET: ${ORCHESTRATION_WEBHOOK_SECRET:-}
+      DATA_DIR: /data-dir
     volumes:
       - ${DATA_DIR}:/data-dir
       - ${LOG_DIR_MONA}:/var/log/mona
    
   navi:
     container_name: navi
-    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:6f0d0bcaf504905b49a0882a9db3b3413f726bbc318f467b0810e44ac84d4f4c
+    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:5e0e0b5d6c39c9461c06f7b42f86bea5de8cf89380a8941654eb8026f758364f
     environment:
       CROW_URL: http://crow:8000
       PANTHER_URL: http://panther:8000
@@ -42,7 +45,7 @@ services:
 
   panther:
     container_name: panther
-    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:2892318fd68a4f484c7fe699b6b30121c405751dd3e0179b86024c70bc7396cf
+    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:781ad9829f24aad03af702dd94c59c57e4aa43ca077b0cbcb8d0512949c8d16f
     environment:
       MONA_URL: http://mona:8000
       ES_URL: http://es:9200
@@ -53,6 +56,8 @@ services:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
       LOG_DIR_PANTHER: /var/log/panther
+      NAVI_ORCHESTRATION_URL: ${NAVI_ORCHESTRATION_URL:-http://navi:8000/orchestration}
+      ORCHESTRATION_WEBHOOK_SECRET: ${ORCHESTRATION_WEBHOOK_SECRET:-}
     volumes:
       - ${DATA_DIR}:/data-dir
       - ${LOG_DIR_PANTHER}:/var/log/panther
