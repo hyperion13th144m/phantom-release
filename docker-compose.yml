@@ -128,6 +128,16 @@ services:
     volumes:
       - es-data:/usr/share/elasticsearch/data
     restart: always
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s >/dev/null || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   nginx:
     container_name: phantom-nginx
@@ -143,6 +153,42 @@ services:
       - skull
       - mona
       - navi
+
+  es-init:
+    image: curlimages/curl:8.7.1
+    container_name: phantom-es-init
+    depends_on:
+      es:
+        condition: service_healthy
+    volumes:
+      - ./es:/mappings:ro
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -eu
+
+        ES_URL="http://es:9200"
+        INDEX_NAME="${ES_INDEX:-patent-documents}"
+        MAPPING_FILE="/mappings/mapping.json"
+
+        echo "Waiting for Elasticsearch..."
+        until curl -fsS "$ES_URL/_cluster/health?wait_for_status=yellow&timeout=1s" >/dev/null; do
+          sleep 2
+        done
+
+        if curl -fsS "$ES_URL/$INDEX_NAME" >/dev/null 2>&1; then
+          echo "Index already exists: $INDEX_NAME"
+          exit 0
+        fi
+
+        echo "Creating index: $INDEX_NAME"
+        curl -fsS -X PUT "$ES_URL/$INDEX_NAME" \
+          -H "Content-Type: application/json" \
+          --data-binary "@$MAPPING_FILE"
+
+        echo "Index created."
 
 volumes:
   es-data:
