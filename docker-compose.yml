@@ -16,7 +16,7 @@ services:
 
   mona:
     container_name: mona
-    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:7f5ec658c85b586bd3dae46bd7d7a9933386860598723315283049933aa99e69
+    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:0191e0c07698209d3c08f8049fa0e1225602d8de61773928c6431847009f9001
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
@@ -27,7 +27,7 @@ services:
    
   navi:
     container_name: navi
-    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:e20e161d3edb20f9adfb4ec5206d38820fa48f85292786ecf77a30f2c0e4bc51
+    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:310ab40bb1cc7fb9cddd2eacd96c891e9f46de6bc1ee0a858c535c7585dd2dfb
     environment:
       CROW_URL: http://crow:8000
       PANTHER_URL: http://panther:8000
