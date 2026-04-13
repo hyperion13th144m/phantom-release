@@ -156,9 +156,9 @@ find /src
 
 ```bash
 cd /home/hoge
-git clone https://github.com/hyperion13th144m/phantom-release -b v1.0.0
+git clone https://github.com/hyperion13th144m/phantom-release -b ****
 ```
--b v.1.0.0 はバージョン番号。
+-b **** はバージョン番号。最新リリース （例えば v.1.0.1）を指定する。
 
 ### 4.3 全文検索システムの設定
 設定ファイルをコピーし編集する
