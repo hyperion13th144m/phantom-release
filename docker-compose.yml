@@ -1,7 +1,7 @@
 services:
   crow:
     container_name: crow
-    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:c32b74203a8a2a7849d497a3a9ec75360b6495a5e042ac1127a30c9e1bdb9bc0
+    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:5dcf5e86c318f1d0b54a485dad3ff8223a3aeb879aab04ce18ba90eaf610150a
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
@@ -27,10 +27,11 @@ services:
    
   navi:
     container_name: navi
-    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:310ab40bb1cc7fb9cddd2eacd96c891e9f46de6bc1ee0a858c535c7585dd2dfb
+    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:6f0d0bcaf504905b49a0882a9db3b3413f726bbc318f467b0810e44ac84d4f4c
     environment:
       CROW_URL: http://crow:8000
       PANTHER_URL: http://panther:8000
+      MONA_URL: http://mona:8000
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
       ORCHESTRATION_WEBHOOK_SECRET: ${ORCHESTRATION_WEBHOOK_SECRET:-}
@@ -41,7 +42,7 @@ services:
 
   panther:
     container_name: panther
-    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:3696789366ee6664cacb2e5b84054987048c180efe6362b0ea820699b8f21715
+    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:2892318fd68a4f484c7fe699b6b30121c405751dd3e0179b86024c70bc7396cf
     environment:
       MONA_URL: http://mona:8000
       ES_URL: http://es:9200
@@ -58,7 +59,7 @@ services:
 
   fox:
     container_name: fox
-    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:3121fe0d0303e558a917ff9e779144f40bcfe81878677ebd9dc98c55807fba85
+    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:f79949bf0a4db23f90aad13b9bf1a34e2025137016cbd97ca22a14120864799c
     environment:
       NODE_ENV: production
       ES_URL: http://es:9200

@@ -63,3 +63,16 @@ This release provides a reproducible environment with fixed digests.
 
 This release provides a reproducible environment with fixed digests.
 
+## v1.0.5 - 2026-04-13
+
+- phantom-crow:          ghcr.io/hyperion13th144m/phantom-crow@sha256:5dcf5e86c318f1d0b54a485dad3ff8223a3aeb879aab04ce18ba90eaf610150a
+- phantom-mona:          ghcr.io/hyperion13th144m/phantom-mona@sha256:0191e0c07698209d3c08f8049fa0e1225602d8de61773928c6431847009f9001
+- phantom-panther:       ghcr.io/hyperion13th144m/phantom-panther@sha256:2892318fd68a4f484c7fe699b6b30121c405751dd3e0179b86024c70bc7396cf
+- phantom-fox:           ghcr.io/hyperion13th144m/phantom-fox@sha256:f79949bf0a4db23f90aad13b9bf1a34e2025137016cbd97ca22a14120864799c
+- phantom-joker:         ghcr.io/hyperion13th144m/phantom-joker@sha256:e3e26d23e1c77ddfb16a6859bbec57480b48d24fefb422055b3d3ad6ee10d58e
+- phantom-skull:         ghcr.io/hyperion13th144m/phantom-skull@sha256:d384af87dba64359289d21ee498dc276cc8d873a59f02e7ce762d1e79f678454
+- phantom-navi:          ghcr.io/hyperion13th144m/phantom-navi@sha256:6f0d0bcaf504905b49a0882a9db3b3413f726bbc318f467b0810e44ac84d4f4c
+- phantom-elasticsearch: ghcr.io/hyperion13th144m/phantom-elasticsearch@sha256:b0eaf570962a2420f8340c64e6507b1f265160b3b8f5411b73e38dc517a057f9
+
+This release provides a reproducible environment with fixed digests.
+
