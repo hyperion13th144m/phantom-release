@@ -45,7 +45,7 @@ services:
 
   panther:
     container_name: panther
-    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:781ad9829f24aad03af702dd94c59c57e4aa43ca077b0cbcb8d0512949c8d16f
+    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:d9ac99fa6be566d0a6fd820c0e97f62cb65400a932c34bb8cabcd998e5b32f52
     environment:
       MONA_URL: http://mona:8000
       ES_URL: http://es:9200
