@@ -176,19 +176,19 @@ services:
         MAPPING_FILE="/mappings/mapping.json"
 
         echo "Waiting for Elasticsearch..."
-        until curl -fsS "$ES_URL/_cluster/health?wait_for_status=yellow&timeout=1s" >/dev/null; do
+        until curl -fsS "$$ES_URL/_cluster/health?wait_for_status=yellow&timeout=1s" >/dev/null; do
           sleep 2
         done
 
-        if curl -fsS "$ES_URL/$INDEX_NAME" >/dev/null 2>&1; then
-          echo "Index already exists: $INDEX_NAME"
+        if curl -fsS "$$ES_URL/$$INDEX_NAME" >/dev/null 2>&1; then
+          echo "Index already exists: $$INDEX_NAME"
           exit 0
         fi
 
-        echo "Creating index: $INDEX_NAME"
-        curl -fsS -X PUT "$ES_URL/$INDEX_NAME" \
+        echo "Creating index: $$INDEX_NAME"
+        curl -fsS -X PUT "$$ES_URL/$$INDEX_NAME" \
           -H "Content-Type: application/json" \
-          --data-binary "@$MAPPING_FILE"
+          --data-binary "@$$MAPPING_FILE"
 
         echo "Index created."
 
