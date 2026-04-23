@@ -45,7 +45,7 @@ services:
 
   panther:
     container_name: panther
-    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:e5dcc39a1efd82832a2c50bdb38814c06d518aa1f2e5ec4161bc9f86fdbb1ea6
+    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:f970698057f0bbc6e3a5e2a39fb06abc1f9f77c857d1cac8e8cf89ad17b2747e
     environment:
       MONA_URL: http://mona:8000
       ES_URL: http://es:9200
@@ -58,6 +58,8 @@ services:
       LOG_DIR_PANTHER: /var/log/panther
       NAVI_ORCHESTRATION_URL: ${NAVI_ORCHESTRATION_URL:-http://navi:8000/orchestration}
       ORCHESTRATION_WEBHOOK_SECRET: ${ORCHESTRATION_WEBHOOK_SECRET:-}
+      ES_CHUNK_SIZE: ${ES_CHUNK_SIZE:-1000}
+      ES_REQUEST_TIMEOUT: ${ES_REQUEST_TIMEOUT:-30}
     volumes:
       - ${DATA_DIR}:/data-dir
       - ${LOG_DIR_PANTHER}:/var/log/panther
