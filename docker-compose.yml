@@ -66,7 +66,7 @@ services:
 
   fox:
     container_name: fox
-    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:05b4abecf3f104425fc9d71911afdc359779140f833adf5b47033316ca1e2694
+    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:12f482a49db5fc8aa837703a8bfd8704f3dde764be5c3a883b531aeb0b6d6791
     environment:
       NODE_ENV: production
       ES_URL: http://es:9200
@@ -81,7 +81,7 @@ services:
 
   joker:
     container_name: joker
-    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:494347618168f28202108c8aab4bb4b19f45cd763283cd7368f31e56241e23a5
+    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:842cd0e02fa526a5ab45458581027567802beddf071b2fefbbe3f5c76439b999
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
