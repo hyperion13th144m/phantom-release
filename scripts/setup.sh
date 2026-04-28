@@ -10,5 +10,5 @@ MODE=${1:-production}
 
 echo "Setting up Elasticsearch mapping"
 
-"$SCRIPT_DIR/es.sh" -m "$MODE" -i documents
-"$SCRIPT_DIR/es.sh" -m "$MODE" -i images
+"$SCRIPT_DIR/es.sh" -m "$MODE" documents
+"$SCRIPT_DIR/es.sh" -m "$MODE" images
