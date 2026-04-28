@@ -6,7 +6,21 @@ SCRIPT_DIR=$(dirname "$0")
 _PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
 PROJECT_ROOT=$(readlink -f "$_PROJECT_ROOT")
 
-INDEX=patent-documents
+declare -A INDEXES=(
+  ["documents"]="patent-documents"
+  ["images"]="patent-images"
+)
+
+declare -A MAPPING_FILES=(
+  ["documents"]="$PROJECT_ROOT/infra/es/generated/mapping.json"
+  ["images"]="$PROJECT_ROOT/infra/es/generated/image-mapping.json"
+)
+
+TARGETS=(
+    "documents"
+    "images"
+)
+
 ES_HOST=localhost
 ES_PORT=9200
 MODE=production
@@ -34,8 +48,18 @@ do
 done
 
 shift $((OPTIND - 1)) # オプション部分をスキップ
+TARGET=$1
+if [[ -z "${INDEXES[$TARGET]}" ]]; then
+  echo "Invalid target: $TARGET. Valid targets are: ${!INDEXES[@]}" >&2
+  exit 1
+fi
 
-MAPPING_FILE=${1:-$PROJECT_ROOT/es/mapping.json}
+MAPPING_FILE=${MAPPING_FILES[$TARGET]}
+if [ ! -f "$MAPPING_FILE" ]; then
+    echo "Mapping file not found for target '$TARGET': $MAPPING_FILE" >&2
+    exit 1
+fi
+INDEX=${INDEXES[$TARGET]}
 
 if [ "$MODE" = "production" ]; then
   CONFIG=docker-compose.yml

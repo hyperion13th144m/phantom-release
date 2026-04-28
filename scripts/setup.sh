@@ -9,4 +9,6 @@ PROJECT_ROOT=$(readlink -f "$_PROJECT_ROOT")
 MODE=${1:-production}
 
 echo "Setting up Elasticsearch mapping"
-"$SCRIPT_DIR/es.sh" -m "$MODE"
+
+"$SCRIPT_DIR/es.sh" -m "$MODE" -i documents
+"$SCRIPT_DIR/es.sh" -m "$MODE" -i images

@@ -189,13 +189,16 @@ LOG_DIR_SKULL=./var/log/skull
 LOG_DIR_NOIR=./var/log/noir
 SQLITE_NAME=extra-data.sqlite3
 
-ORCHESTRATION_WEBHOOK_SECRET=1234567890abcdef
-NAVI_ORCHESTRATION_WEBHOOK_URL=http://navi:8000/orchestration/crow-completed
+NAVI_ORCHESTRATION_URL=http://navi:8000/orchestration
+NAVI_ORCHESTRATION_WEBHOOK_SECRET=1234567890abcdef
 NAVI_ORCHESTRATION_WEBHOOK_TIMEOUT_SECONDS=5
 
 ES_USER=elastic
 ES_PASSWORD=elastic
 ES_INDEX=patent-documents
+ES_IMAGE_INDEX=patent-images
+ES_CHUNK_SIZE=100
+ES_REQUEST_TIMEOUT=120
 MEM_LIMIT=1073741824
 ```
 
@@ -273,6 +276,15 @@ http://192.168.1.1:8080
 <img src="./assets/5-2-orchestration-done.jpg" alt="管理画面イメージ2-4" width="820">
 
 文書の数やハードウェアスペックによるが、明細書4,500件、その他の文書15,000件ぐらいで、2時間ぐらいかかった。
+
+画像検索用の embedding 生成を有効にした場合、画像ベクトルの生成と Elasticsearch への投入はメモリを多く使う。
+低スペック環境では、embedding ありの全件一括実行は避け、50〜100 文書程度の id_list に分けて Violet/Panther を実行する。
+Panther の `chunk_size` は 50〜100 程度、`request_timeout` は 120 秒以上から試すとよい。
+Violet 実行後にメモリが戻りにくい場合は、Panther 実行前に Violet を restart/stop してから進める。
+オーケストレーション画面では、表示中ジョブの全体状況と、`patent-documents` / `patent-images` の進捗を分けて確認でき、文書 index 登録と画像 index 登録も別ステップとして表示される。
+失敗後は、同じ画面から documents から再実行、Violet から再実行、images upload だけ再実行を選べる。
+オーケストレーション履歴は `LOG_DIR_NAVI/orchestration/pipelines` に保存されるため、Navi を再起動しても履歴は残る。
+Navi 起動時には、待機中だった Mona/Violet/Panther の完了状態を可能な範囲で確認し、完了済みなら次のステップへ進める。
 
 #### 定期実行予約
 <img src="./assets/5-2-schedule.jpg" alt="管理画面イメージ3" width="260">
