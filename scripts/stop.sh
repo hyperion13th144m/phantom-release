@@ -17,7 +17,4 @@ else
 fi
 
 docker compose -f "$PROJECT_ROOT/docker-compose.yml" \
-    pull crow fox joker mona navi panther skull violet
-
-docker compose -f "$PROJECT_ROOT/docker-compose.yml" \
-    --profile "$PROFILES" up -d 
+    --profile "$PROFILES" down
