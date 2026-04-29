@@ -155,7 +155,7 @@ services:
     image: phantom-elasticsearch
     container_name: phantom-elasticsearch
     build:
-      context: ./infra/elasticsearch
+      context: ./infra/es
       dockerfile: Dockerfile
     environment:
       discovery.type: single-node
@@ -208,7 +208,7 @@ services:
       es:
         condition: service_healthy
     volumes:
-      - ./es:/mappings:ro
+      - ./infra/es/generated:/mappings:ro
     restart: "no"
     entrypoint:
       - sh
