@@ -1,0 +1,5 @@
+services:
+  nginx:
+    volumes:
+      - ./infra/nginx/nginx-ssl.conf:/etc/nginx/conf.d/default.conf
+      - ./secrets/nginx/tls:/etc/nginx/tls:ro
