@@ -13,12 +13,8 @@ case "$1" in
     stop)
         docker compose -f "$PROJECT_ROOT/docker-compose.yml" down
         ;;
-    pull)
-        docker compose -f "$PROJECT_ROOT/docker-compose.yml" \
-            pull crow fox joker mona navi panther skull
-        ;; 
     *)
-        echo "Usage: $0 {start|stop|pull}" >&2
+        echo "Usage: $0 {start|stop}" >&2
         exit 1
         ;;
 esac
