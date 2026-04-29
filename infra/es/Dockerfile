@@ -4,5 +4,4 @@ RUN bin/elasticsearch-plugin install analysis-icu
 RUN bin/elasticsearch-plugin install analysis-kuromoji
 
 COPY generated/*.json /mapping/
-COPY init.sh /init.sh
-RUN chmod +x /init.sh
+COPY --chmod=755 init.sh /init.sh
