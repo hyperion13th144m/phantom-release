@@ -1,4 +1,4 @@
-FROM ghcr.io/hyperion13th144m/phantom-violet@sha256:8bae486d2b257cfb753d9531cec9acf3fac6d0769f47cd5545a5ce87910dfc4e
+FROM ghcr.io/hyperion13th144m/phantom-violet@sha256:a9c0b92a512c7907112385dc7c59178606aaaf8b4d06cec68551ebf4c9ce174c
 
 WORKDIR /app
 RUN uv sync --frozen --extra embeddings

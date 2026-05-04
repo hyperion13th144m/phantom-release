@@ -12,8 +12,8 @@ declare -A INDEXES=(
 )
 
 declare -A MAPPING_FILES=(
-  ["documents"]="/mapping/mapping.json"
-  ["images"]="/mapping/image-mapping.json"
+  ["documents"]="/mapping/doc-mapping.json"
+  ["images"]="/mapping/img-mapping.json"
 )
 
 TARGETS=(
