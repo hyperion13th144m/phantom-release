@@ -1,7 +1,7 @@
 services:
   crow:
     container_name: crow
-    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:a442285cbc726d1c5dd0c32253774253304aa8e8654b00a5afbc07332f33409b
+    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:3025cf26f931ebc74490b9e97ff1ae16e1260a0951cbf28f53b01a20934c2b9b
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
@@ -18,7 +18,7 @@ services:
 
   mona:
     container_name: mona
-    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:2b1f169d6bab272c25d482a71d161de47872e6d6e20c7a3fc901f2b7ab0c29d4
+    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:24d4a81e899f633075f658aecdb9b9d273bb1a304ecbeabc059b610517c2c503
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
@@ -34,7 +34,7 @@ services:
    
   navi:
     container_name: navi
-    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:50fe59bd2a3b871ced696d757740a8a3e5d9bb5b13b5b590229c6c3de189fe4f
+    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:faaa9fbe06b601e696c0fc1841e4972e9e51d181ffcf19198e0ab457e8e38bd0
     environment:
       CROW_URL: http://crow:8000
       PANTHER_URL: http://panther:8000
@@ -53,8 +53,8 @@ services:
     container_name: violet
     image: phantom-violet
     build:
-      context: ./services/violet
-      dockerfile: Dockerfile.embeddings
+      context: .
+      dockerfile: services/violet/Dockerfile.embeddings
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
@@ -72,7 +72,7 @@ services:
 
   panther:
     container_name: panther
-    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:aa43c20b8076d2665835c40eba35b11436ed56eddc9a32960ee0abee2c63d1fe
+    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:a8a87f1740567cac80b3ffe67dade91f4f08eca6fb048ee75092d32e5ad27f38
     environment:
       MONA_URL: http://mona:8000
       ES_URL: http://es:9200
@@ -96,7 +96,7 @@ services:
 
   fox:
     container_name: fox
-    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:d275556048df7d7eb6f7db2749442c2bb6e76b62374dc8bb0ff161d5aeac1fa0
+    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:1372b6dd34806c0e813c49a07e7e8ecbd57e42b73887766c2cad182b93328f0d
     environment:
       NODE_ENV: production
       ES_URL: http://es:9200
@@ -114,7 +114,7 @@ services:
 
   joker:
     container_name: joker
-    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:0d1cf62a346d6a2316fa2c59aefafae577e7165aa253cb021cf78299ab21078e
+    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:649b658b492399d8acf2fac0166db87a096f444508c243fba270462bf72dca0e
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
@@ -134,7 +134,7 @@ services:
 
   skull:
     container_name: skull
-    image: ghcr.io/hyperion13th144m/phantom-skull@sha256:7872c415ed7b4b7e0a2bbb0c253d7f423fb4035c67ff3d92d49e4c41b7aee0b0
+    image: ghcr.io/hyperion13th144m/phantom-skull@sha256:fe3eef19e807ce1f740acb651f3c99f5d64a60545ba402f53df844d5fcd81ce5
     environment:
       LANG: ja_JP.UTF-8
       TZ: Asia/Tokyo
@@ -162,7 +162,7 @@ services:
       xpack.security.enabled: false
       network.host: 0.0.0.0
       ELASTIC_PASSWORD: ${ES_PASSWORD}
-      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      ES_JAVA_OPTS: ${ES_JAVA_OPTS:- -Xms512m -Xmx512m}
     mem_limit: ${MEM_LIMIT}
     ulimits:
       memlock:
@@ -218,9 +218,9 @@ services:
 
         ES_URL="http://es:9200"
         DOC_INDEX_NAME="${ES_INDEX:-patent-documents}"
-        DOC_MAPPING_FILE="/mappings/mapping.json"
+        DOC_MAPPING_FILE="/mappings/doc-mapping.json"
         IMAGE_INDEX_NAME="${ES_IMAGE_INDEX:-patent-images}"
-        IMAGE_MAPPING_FILE="/mappings/image-mapping.json"
+        IMAGE_MAPPING_FILE="/mappings/img-mapping.json"
 
         echo "Waiting for Elasticsearch..."
         until curl -fsS "$$ES_URL/_cluster/health?wait_for_status=yellow&timeout=1s" >/dev/null; do
