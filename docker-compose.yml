@@ -1,176 +1,300 @@
+# phantom 本番環境用 docker-compose
+#
+#   docker compose --env-file .env.docker pull
+#   docker compose --env-file .env.docker up -d
+#
+# 各サービスのイメージは GitHub Actions で ghcr.io に push されたものを使う。
+# ホスト側の設定（データディレクトリ・公開ポート・ES 認証）は .env.docker で与える。
+# リポジトリ直下の .env は開発用（$HOME を含むパスなど）なので compose には使わない。
+
 services:
+  # ---- パイプライン（crow → queen → noir → violet → panther）-------------
   crow:
     container_name: crow
-    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:3025cf26f931ebc74490b9e97ff1ae16e1260a0951cbf28f53b01a20934c2b9b
+    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:fde5f33b7eaec2bfb7d36fa467d5838b7c3dddacccea926d21150f522f0c2748
+    restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
-      TZ: Asia/Tokyo
-      LOG_DIR_CROW: /var/log/crow
-      NAVI_ORCHESTRATION_URL: ${NAVI_ORCHESTRATION_URL:-http://navi:8000/orchestration}
-      NAVI_ORCHESTRATION_WEBHOOK_SECRET: ${NAVI_ORCHESTRATION_WEBHOOK_SECRET:-}
-      NAVI_ORCHESTRATION_WEBHOOK_TIMEOUT_SECONDS: ${NAVI_ORCHESTRATION_WEBHOOK_TIMEOUT_SECONDS:-5}
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SRC_DIR: /src-dir
+      DST_DIR: /data-dir
+      CROW_STATE_DIR: /var/lib/crow/tasks
+      CROW_HOST: 0.0.0.0
+      CROW_PORT: 8000
     volumes:
-      - ${SRC_DIR}:/src-dir
-      - ${DATA_DIR}:/data-dir
-      - ${LOG_DIR_CROW}:/var/log/crow
+      - ${PHANTOM_SRC_DIR}:/src-dir:ro
+      - ${PHANTOM_DATA_DIR}:/data-dir
+      - crow-state:/var/lib/crow
     networks:
       - phantom-network
 
-  mona:
-    container_name: mona
-    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:24d4a81e899f633075f658aecdb9b9d273bb1a304ecbeabc059b610517c2c503
+  queen:
+    container_name: queen
+    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:dedf5b75bb880e38d85128f91766b2d2228b213abf852248d4c3e3a5aefcca45
+    restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
-      TZ: Asia/Tokyo
-      LOG_DIR_MONA: /var/log/mona
-      NAVI_ORCHESTRATION_URL: ${NAVI_ORCHESTRATION_URL:-http://navi:8000/orchestration}
-      NAVI_ORCHESTRATION_WEBHOOK_SECRET: ${NAVI_ORCHESTRATION_WEBHOOK_SECRET:-}
-      DATA_DIR: /data-dir
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DST_DIR: /data-dir
+      QUEEN_STATE_DIR: /var/lib/queen/tasks
+      # XSL はイメージに同梱済み（services/queen/Dockerfile）
+      XSL_DIR: /libs/jpo-schema/stylesheets/2.0
+      QUEEN_HOST: 0.0.0.0
+      QUEEN_PORT: 8001
     volumes:
-      - ${DATA_DIR}:/data-dir
-      - ${LOG_DIR_MONA}:/var/log/mona
+      - ${PHANTOM_DATA_DIR}:/data-dir
+      - queen-state:/var/lib/queen
     networks:
       - phantom-network
-   
-  navi:
-    container_name: navi
-    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:faaa9fbe06b601e696c0fc1841e4972e9e51d181ffcf19198e0ab457e8e38bd0
+
+  noir:
+    container_name: noir
+    image: ghcr.io/hyperion13th144m/phantom-noir@sha256:f3c738034eecdb10c22bb802276a423bc17d93c2c6088ad96b18b825a8b91889
+    restart: unless-stopped
     environment:
-      CROW_URL: http://crow:8000
-      PANTHER_URL: http://panther:8000
-      MONA_URL: http://mona:8000
-      VIOLET_URL: http://violet:8000
       LANG: ja_JP.UTF-8
-      TZ: Asia/Tokyo
-      NAVI_ORCHESTRATION_WEBHOOK_SECRET: ${NAVI_ORCHESTRATION_WEBHOOK_SECRET:-}
-      LOG_DIR_NAVI: /var/log/navi
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DST_DIR: /data-dir
+      NOIR_STATE_DIR: /var/lib/noir/tasks
+      NOIR_HOST: 0.0.0.0
+      NOIR_PORT: 8004
+      NOIR_EMBEDDING_PROVIDER: ${NOIR_EMBEDDING_PROVIDER:-sentence-transformers}
+      NOIR_EMBEDDING_MODEL: ${NOIR_EMBEDDING_MODEL:-cl-nagoya/ruri-v3-130m}
+      NOIR_EMBEDDING_DEVICE: ${NOIR_EMBEDDING_DEVICE:-cpu}
+      # モデルの重みは HF キャッシュに残して再起動時の再ダウンロードを避ける
+      HF_HOME: /var/cache/huggingface
     volumes:
-      - ${LOG_DIR_NAVI}:/var/log/navi
+      - ${PHANTOM_DATA_DIR}:/data-dir
+      - noir-state:/var/lib/noir
+      - hf-cache:/var/cache/huggingface
     networks:
       - phantom-network
 
   violet:
     container_name: violet
-    image: phantom-violet
-    build:
-      context: .
-      dockerfile: services/violet/Dockerfile.embeddings
+    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:29e194573e9d138952be32f98d7cdaca7f0354ee5ecd2d4fc05c627d63326056
+    restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
-      TZ: Asia/Tokyo
-      DATA_DIR: /data-dir
-      MONA_URL: http://mona:8000
-      LOG_DIR_VIOLET: /var/log/violet
-      NAVI_ORCHESTRATION_URL: ${NAVI_ORCHESTRATION_URL:-http://navi:8000/orchestration}
-      NAVI_ORCHESTRATION_WEBHOOK_SECRET: ${NAVI_ORCHESTRATION_WEBHOOK_SECRET:-}
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DST_DIR: /data-dir
+      VIOLET_STATE_DIR: /var/lib/violet/tasks
+      VIOLET_HOST: 0.0.0.0
+      VIOLET_PORT: 8003
+      OCR_LANG: ${OCR_LANG:-jpn+eng}
+      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
+      HF_HOME: /var/cache/huggingface
     volumes:
-      - ${DATA_DIR}:/data-dir
-      - ${LOG_DIR_VIOLET}:/var/log/violet
+      - ${PHANTOM_DATA_DIR}:/data-dir
+      - violet-state:/var/lib/violet
+      - hf-cache:/var/cache/huggingface
     networks:
       - phantom-network
 
-
   panther:
     container_name: panther
-    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:a8a87f1740567cac80b3ffe67dade91f4f08eca6fb048ee75092d32e5ad27f38
+    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:53993f1c60d3057c7d37ff19ab6a0b4abb1b2cf52947b327b1ef140b4eff0444
+    restart: unless-stopped
     environment:
-      MONA_URL: http://mona:8000
-      ES_URL: http://es:9200
-      ES_USER: ${ES_USER}
-      ES_PASSWORD: ${ES_PASSWORD}
-      ES_INDEX: ${ES_INDEX}
-      ES_IMAGE_INDEX: ${ES_IMAGE_INDEX:-patent-images}
-      SQLITE_PATH: /extra-dir/${SQLITE_NAME}
       LANG: ja_JP.UTF-8
-      TZ: Asia/Tokyo
-      LOG_DIR_PANTHER: /var/log/panther
-      NAVI_ORCHESTRATION_URL: ${NAVI_ORCHESTRATION_URL:-http://navi:8000/orchestration}
-      NAVI_ORCHESTRATION_WEBHOOK_SECRET: ${NAVI_ORCHESTRATION_WEBHOOK_SECRET:-}
-      ES_CHUNK_SIZE: ${ES_CHUNK_SIZE:-100}
-      ES_REQUEST_TIMEOUT: ${ES_REQUEST_TIMEOUT:-120}
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DST_DIR: /data-dir
+      PANTHER_STATE_DIR: /var/lib/panther/tasks
+      PANTHER_HOST: 0.0.0.0
+      PANTHER_PORT: 8006
+      ES_URL: http://es:9200
+      ES_USER: ${ES_USER:-elastic}
+      ES_PASSWORD: ${ES_PASSWORD:-}
+      ES_API_KEY: ${ES_API_KEY:-}
+      ES_DOC_INDEX: ${ES_DOC_INDEX:-documents}
+      ES_IMG_INDEX: ${ES_IMG_INDEX:-images}
+      # インデックス未作成時に panther がこのマッピングで作る
+      ES_MAPPING_DIR: /infra/es
     volumes:
-      - ${DATA_DIR}:/data-dir
-      - ${LOG_DIR_PANTHER}:/var/log/panther
+      - ${PHANTOM_DATA_DIR}:/data-dir
+      - ./infra/es:/infra/es:ro
+      - panther-state:/var/lib/panther
+    depends_on:
+      es:
+        condition: service_healthy
+    networks:
+      - phantom-network
+
+  # ---- 文書配信・UI ------------------------------------------------------
+  mona:
+    container_name: mona
+    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:270e5f69d203a5794b6db600167df5d28d873b629c617f463b1b2cb5fed1b69e
+    restart: unless-stopped
+    environment:
+      LANG: ja_JP.UTF-8
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DST_DIR: /data-dir
+      MONA_HOST: 0.0.0.0
+      MONA_PORT: 8002
+    volumes:
+      - ${PHANTOM_DATA_DIR}:/data-dir:ro
     networks:
       - phantom-network
 
   fox:
     container_name: fox
-    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:1372b6dd34806c0e813c49a07e7e8ecbd57e42b73887766c2cad182b93328f0d
+    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:c1cb7637c4940fc33c58fee6a70748b883e4619dfbfbcbb6571085c9b7fd6034
+    restart: unless-stopped
     environment:
-      NODE_ENV: production
-      ES_URL: http://es:9200
-      ES_USER: ${ES_USER}
-      ES_PASSWORD: ${ES_PASSWORD}
-      ES_INDEX: ${ES_INDEX}
       LANG: ja_JP.UTF-8
-      TZ: Asia/Tokyo
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+      NODE_ENV: production
+      FOX_HOST: 0.0.0.0
+      FOX_PORT: 4321
+      MONA_URL: http://mona:8002
+      FOX_CONFIG_PATH: /var/config/fox.config
       LOG_DIR_FOX: /var/log/fox
-      MONA_URL: http://mona:8000
     volumes:
-      - ${LOG_DIR_FOX}:/var/log/fox
+      - fox-config:/var/config
+      - fox-log:/var/log/fox
+    depends_on:
+      - mona
     networks:
       - phantom-network
 
   joker:
     container_name: joker
-    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:649b658b492399d8acf2fac0166db87a096f444508c243fba270462bf72dca0e
+    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:4b75989ef53f4ca228610ce1f4e744521d3147d65d1094619aea0e661c716569
+    restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
-      TZ: Asia/Tokyo
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+      NODE_ENV: production
+      JOKER_HOST: 0.0.0.0
+      JOKER_PORT: 4322
       ES_URL: http://es:9200
-      ES_USER: ${ES_USER}
-      ES_PASSWORD: ${ES_PASSWORD}
-      ES_INDEX: ${ES_INDEX}
-      ES_IMAGE_INDEX: ${ES_IMAGE_INDEX:-patent-images}
-      NEXT_PUBLIC_DOCUMENT_BASE_URL: /fox/docs
-      MONA_URL: http://mona:8000
+      ES_USER: ${ES_USER:-elastic}
+      ES_PASSWORD: ${ES_PASSWORD:-}
+      ES_API_KEY: ${ES_API_KEY:-}
+      ES_DOC_INDEX: ${ES_DOC_INDEX:-documents}
+      ES_IMG_INDEX: ${ES_IMG_INDEX:-images}
+      MONA_URL: http://mona:8002
+      NOIR_URL: http://noir:8004
+      # 画像のセマンティック検索でフレーズを CLIP ベクトルに変換する
+      VIOLET_URL: http://violet:8003
+      # 検索結果から文書ページへ張るリンク。ブラウザから見える URL を指定する
+      FOX_URL: ${PHANTOM_PUBLIC_URL:-http://localhost:8080}/fox
+      LOG_DIR_JOKER: /var/log/joker
     volumes:
-      - ${LOG_DIR_JOKER}:/var/log/joker
+      - joker-log:/var/log/joker
     depends_on:
-      - es
+      es:
+        condition: service_healthy
     networks:
       - phantom-network
 
   skull:
     container_name: skull
-    image: ghcr.io/hyperion13th144m/phantom-skull@sha256:fe3eef19e807ce1f740acb651f3c99f5d64a60545ba402f53df844d5fcd81ce5
+    image: ghcr.io/hyperion13th144m/phantom-skull@sha256:9b0589e0b4bf7cca11c6898429dce42be62d00b7339d7ffee9ddbbe3f1c01333
+    restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
-      TZ: Asia/Tokyo
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SKULL_HOST: 0.0.0.0
+      SKULL_PORT: 8007
+      SKULL_DB_URL: sqlite:////var/lib/skull/skull.db
+      SKULL_STATE_DIR: /var/lib/skull/tasks
       ES_URL: http://es:9200
-      ES_USER: ${ES_USER}
-      ES_PASSWORD: ${ES_PASSWORD}
-      ES_INDEX: ${ES_INDEX}
-      NEXT_PUBLIC_DOCUMENT_BASE_URL: /fox/docs
-      NEXT_PUBLIC_APP_URL: http://skull:3000/skull
-      SQLITE_PATH: /extra-dir/${SQLITE_NAME}
+      ES_USER: ${ES_USER:-elastic}
+      ES_PASSWORD: ${ES_PASSWORD:-}
+      ES_API_KEY: ${ES_API_KEY:-}
+      ES_DOC_INDEX: ${ES_DOC_INDEX:-documents}
+      ES_IMG_INDEX: ${ES_IMG_INDEX:-images}
     volumes:
-      - ${LOG_DIR_SKULL}:/var/log/skull
-      - ${EXTRA_DATA_DIR}:/extra-dir
+      - skull-data:/var/lib/skull
+    depends_on:
+      es:
+        condition: service_healthy
     networks:
       - phantom-network
 
+  # ---- パイプライン管制 --------------------------------------------------
+  navi:
+    container_name: navi
+    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:4a1b6399d20c2ec54f98312ad656a8767e903e80f38ed64e7f8d588f7c9b6d4d
+    restart: unless-stopped
+    environment:
+      LANG: ja_JP.UTF-8
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      NAVI_HOST: 0.0.0.0
+      NAVI_PORT: 8005
+      NAVI_POLL_INTERVAL: ${NAVI_POLL_INTERVAL:-2.0}
+      CROW_URL: http://crow:8000
+      QUEEN_URL: http://queen:8001
+      NOIR_URL: http://noir:8004
+      VIOLET_URL: http://violet:8003
+      PANTHER_URL: http://panther:8006
+      MONA_URL: http://mona:8002
+      # fox は base=/fox でビルドしてあるので /health も /fox 配下
+      FOX_URL: http://fox:4321/fox
+      JOKER_URL: http://joker:4322
+      SKULL_URL: http://skull:8007
+    depends_on:
+      - crow
+      - queen
+      - noir
+      - violet
+      - panther
+    networks:
+      - phantom-network
+
+  # ---- リバースプロキシ --------------------------------------------------
+  # ホストに出るのはこのポートだけ。ルーティングは infra/nginx/nginx.conf 参照
+  nginx:
+    container_name: phantom-nginx
+    image: nginx:1.29-alpine
+    restart: unless-stopped
+    environment:
+      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
+    ports:
+      - ${PHANTOM_HTTP_PORT:-8080}:8080
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - joker
+      - fox
+      - skull
+      - navi
+      - mona
+    networks:
+      - phantom-network
+
+  # ---- Elasticsearch -----------------------------------------------------
+  # マッピングが analysis-kuromoji / analysis-icu を使うのでプラグイン入りの
+  # イメージを infra/es の Dockerfile からビルドする
   es:
-    image: phantom-elasticsearch
     container_name: phantom-elasticsearch
+    image: phantom-elasticsearch
     build:
       context: ./infra/es
       dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
       discovery.type: single-node
       xpack.security.enabled: false
       network.host: 0.0.0.0
-      ELASTIC_PASSWORD: ${ES_PASSWORD}
-      ES_JAVA_OPTS: ${ES_JAVA_OPTS:- -Xms512m -Xmx512m}
-    mem_limit: ${MEM_LIMIT}
+      ELASTIC_PASSWORD: ${ES_PASSWORD:-}
+      ES_JAVA_OPTS: ${ES_JAVA_OPTS:- -Xms2g -Xmx2g}
+    mem_limit: ${ES_MEM_LIMIT:-4g}
     ulimits:
       memlock:
         soft: -1
         hard: -1
     volumes:
       - es-data:/usr/share/elasticsearch/data
-    restart: always
     healthcheck:
       test:
         [
@@ -180,78 +304,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 20s
+      start_period: 30s
     networks:
       - phantom-network
-
-  nginx:
-    container_name: phantom-nginx
-    image: nginx:1.29.6-alpine
-    volumes:
-      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./infra/nginx/index.html:/usr/share/nginx/html/index.html
-    ports:
-      - ${NGINX_PORT}:8080
-    depends_on:
-      - joker
-      - fox
-      - navi
-      - skull
-      - mona
-    networks:
-      - phantom-network
-
-  es-init:
-    image: curlimages/curl:8.7.1
-    container_name: phantom-es-init
-    depends_on:
-      es:
-        condition: service_healthy
-    volumes:
-      - ./infra/es/generated:/mappings:ro
-    restart: "no"
-    entrypoint:
-      - sh
-      - -c
-      - |
-        set -eu
-
-        ES_URL="http://es:9200"
-        DOC_INDEX_NAME="${ES_INDEX:-patent-documents}"
-        DOC_MAPPING_FILE="/mappings/doc-mapping.json"
-        IMAGE_INDEX_NAME="${ES_IMAGE_INDEX:-patent-images}"
-        IMAGE_MAPPING_FILE="/mappings/img-mapping.json"
-
-        echo "Waiting for Elasticsearch..."
-        until curl -fsS "$$ES_URL/_cluster/health?wait_for_status=yellow&timeout=1s" >/dev/null; do
-          sleep 2
-        done
-
-        create_index() {
-          INDEX_NAME="$$1"
-          MAPPING_FILE="$$2"
-
-          if curl -fsS "$$ES_URL/$$INDEX_NAME" >/dev/null 2>&1; then
-            echo "Index already exists: $$INDEX_NAME"
-            return 0
-          fi
-
-          echo "Creating index: $$INDEX_NAME"
-          curl -fsS -X PUT "$$ES_URL/$$INDEX_NAME" \
-            -H "Content-Type: application/json" \
-            --data-binary "@$$MAPPING_FILE"
-
-          echo "Index created: $$INDEX_NAME"
-        }
-
-        create_index "$$DOC_INDEX_NAME" "$$DOC_MAPPING_FILE"
-        create_index "$$IMAGE_INDEX_NAME" "$$IMAGE_MAPPING_FILE"
-    networks:
-      - phantom-network
-  
 
 volumes:
   es-data:
+  crow-state:
+  queen-state:
+  noir-state:
+  violet-state:
+  panther-state:
+  skull-data:
+  fox-config:
+  fox-log:
+  joker-log:
+  hf-cache:
 
 networks:
   phantom-network:

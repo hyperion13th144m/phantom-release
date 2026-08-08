@@ -1,0 +1,150 @@
+{
+    "settings": {
+        "analysis": {
+            "char_filter": {
+                "normalize": {
+                    "type": "icu_normalizer",
+                    "name": "nfkc",
+                    "mode": "compose"
+                }
+            },
+            "tokenizer": {
+                "ngram_2_tokenizer": {
+                    "type": "ngram",
+                    "min_gram": "2",
+                    "max_gram": "2",
+                    "token_chars": ["letter", "digit"]
+                }
+            },
+            "analyzer": {
+                "ja_kuromoji": {
+                    "type": "custom",
+                    "char_filter": ["normalize"],
+                    "tokenizer": "kuromoji_tokenizer",
+                    "filter": [
+                        "kuromoji_baseform",
+                        "kuromoji_part_of_speech",
+                        "ja_stop",
+                        "kuromoji_stemmer",
+                        "lowercase"
+                    ]
+                },
+                "ja_ngram": {
+                    "type": "custom",
+                    "char_filter": ["normalize"],
+                    "tokenizer": "ngram_2_tokenizer",
+                    "filter": ["lowercase"]
+                }
+            }
+        }
+    },
+    "mappings": {
+        "properties": {
+            "docId": { "type": "keyword" },
+            "filename": { "type": "keyword" },
+
+            "intRefNumber": {
+                "type": "keyword",
+                "fields": {
+                    "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                }
+            },
+            "extRefNumber": {
+                "type": "keyword",
+                "fields": {
+                    "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                }
+            },
+            "tags": { "type": "keyword" },
+            "assignees": { "type": "keyword" },
+
+            "kind": { "type": "keyword" },
+            "mediaType": { "type": "keyword" },
+            "derived": {
+                "type": "object",
+                "properties": {
+                    "filename": { "type": "keyword" },
+                    "media_type": { "type": "keyword" },
+                    "width": { "type": "integer" },
+                    "height": { "type": "integer" },
+                    "size": { "type": "keyword" }
+                }
+            },
+
+            "figureNumber": {
+                "type": "keyword",
+                "fields": {
+                    "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                }
+            },
+            "description": {
+                "type": "text",
+                "analyzer": "ja_kuromoji",
+                "fields": {
+                    "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                }
+            },
+            "isRepresentative": { "type": "boolean" },
+
+            "embeddings": {
+                "type": "dense_vector",
+                "dims": 512,
+                "index": true,
+                "similarity": "cosine"
+            },
+
+            "bibliographic": {
+                "type": "object",
+                "properties": {
+                    "law": { "type": "keyword" },
+                    "documentName": { "type": "keyword" },
+                    "documentCode": { "type": "keyword" },
+                    "applicationNumber": {
+                        "type": "keyword",
+                        "fields": {
+                            "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                        }
+                    },
+                    "registrationNumber": {
+                        "type": "keyword",
+                        "fields": {
+                            "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                        }
+                    },
+                    "internationalApplicationNumber": {
+                        "type": "keyword",
+                        "fields": {
+                            "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                        }
+                    },
+                    "fileReferenceId": {
+                        "type": "keyword",
+                        "fields": {
+                            "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                        }
+                    },
+                    "applicants": {
+                        "type": "keyword",
+                        "fields": {
+                            "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                        }
+                    },
+                    "inventors": {
+                        "type": "keyword",
+                        "fields": {
+                            "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                        }
+                    },
+                    "inventionTitle": {
+                        "type": "text",
+                        "analyzer": "ja_kuromoji",
+                        "fields": {
+                            "ngram": { "type": "text", "analyzer": "ja_ngram" }
+                        }
+                    },
+                    "datetime": { "type": "date", "format": "epoch_millis" }
+                }
+            }
+        }
+    }
+}

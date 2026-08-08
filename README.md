@@ -1,86 +1,84 @@
-# 特許文書の全文検索システム
+# phantom
 
-本システムは、[インターネット出願ソフト](https://www.pcinfo.jpo.go.jp/site/)で提出・受領した特許文書を取り込み、ブラウザから全文検索・を行うことができます。
+特許庁のインターネット出願ソフトで扱う特許文書（電子データ）を取り込み、
+全文検索・画像検索できるようにするシステム。
+将来的には、担当者・整理番号・技術分類タグ・作業メモなどのメタ情報を管理する
+特許管理システムへの発展を見据えている。
 
-社内 LAN などの閉じた環境で検索する用途を想定しています。検索結果では明細書などの本文だけでなく、図面サムネイルも確認できます。
-
-Source code:
-[https://github.com/hyperion13th144m/phantom](https://github.com/hyperion13th144m/phantom)
+[phantom-old](https://github.com/hyperion13th144m/phantom-old) を一から設計し直したもの。
 
 ## できること
 
-- 明細書、意見書、拒絶理由通知書などの全文検索
-- 発明者、出願人などの書誌検索
-- 文書単位の担当者、タグ、整理番号、メモの管理
-- インターネット出願ソフトの送受信データの収集・検索 index 登録
-- 画像検索（精度は調整中）
+- インターネット出願ソフトの電子データ（JWX/JWS/JPC/JPD + 対の手続XML）を
+  置いておくだけで、展開・変換・エンベディング生成・Elasticsearch 登録までを自動で行う
+- **検索** — キーワード / 厳密 / セマンティック / ハイブリッドの簡易検索、
+  フィールド単位の詳細検索、図面の画像検索（類似画像検索つき）、書誌検索
+- **閲覧** — 文書を HTML でレンダリング（図面カルーセル・目次・キーワードハイライト）
+- **メタ情報** — 内部整理番号・外部整理番号・タグ・担当者を文書に紐づけて検索に反映
 
-## 動作概要
+## 構成
+
+文書の処理は5つのサービスを直列に流れるパイプラインで、
+そのあとを検索・閲覧・メタ情報の各サービスが受け持つ。
 
 ```mermaid
 flowchart LR
-    A[ブラウザ（Windows PC等）] <--> B[全文検索システム（Linux）]
-    B[全文検索システム（Linux）] <--> C[インターネット出願ソフトのデータ（Windows PC）]
+    SRC[("電子データ<br/>SRC_DIR")] --> crow
+    crow --> queen --> noir --> violet --> panther --> ES[("Elasticsearch")]
+    crow -. 書き込み .-> STORE[("文書ストア<br/>DST_DIR")]
+    queen -.-> STORE
+    noir -.-> STORE
+    violet -.-> STORE
+    STORE --> mona
+    ES --> joker
+    ES <--> skull
+    mona --> fox
+    joker -->|文書へのリンク| fox
 ```
 
-全文検索システムは、インターネット出願ソフトのデータを参照して表示・検索用データを作成します。元データは変更しません。
+| サービス | 役割 | 種別 |
+| --- | --- | --- |
+| [crow](https://github.com/hyperion13th144m/phantom/blob/main/services/crow/README.md) | `SRC_DIR` をスキャンし、XML の SHA-256 を文書IDとして `DST_DIR` に展開する | パイプライン |
+| [queen](https://github.com/hyperion13th144m/phantom/blob/main/services/queen/README.md) | XML をマージして XSL で JSON 化し、画像を WebP 3サイズに変換する | パイプライン |
+| [noir](https://github.com/hyperion13th144m/phantom/blob/main/services/noir/README.md) | 書誌事項・本文テキストを抽出し、文書のエンベディングを計算する | パイプライン |
+| [violet](https://github.com/hyperion13th144m/phantom/blob/main/services/violet/README.md) | 画像ごとの図番号・説明・代表図フラグ・OCR・画像エンベディングを生成する | パイプライン |
+| [panther](https://github.com/hyperion13th144m/phantom/blob/main/services/panther/README.md) | 各サービスの JSON を突き合わせて Elasticsearch の文書・画像インデックスに登録する | パイプライン |
+| [navi](https://github.com/hyperion13th144m/phantom/blob/main/services/navi/README.md) | パイプライン全体の管制。タスクの開始・中止・進捗と一括実行の UI | 運用 |
+| [skull](https://github.com/hyperion13th144m/phantom/blob/main/services/skull/README.md) | メタ情報（整理番号・タグ・担当者）の管理 UI と Elasticsearch への同期 | 運用 |
+| [joker](https://github.com/hyperion13th144m/phantom/blob/main/services/joker/README.md) | 検索 UI・検索 API（Astro / SSR） | フロント |
+| [fox](https://github.com/hyperion13th144m/phantom/blob/main/services/fox/README.md) | 文書ビューア（Astro / SSR） | フロント |
+| [mona](https://github.com/hyperion13th144m/phantom/blob/main/services/mona/README.md) | 文書ストアのファイル配信（JSON・画像） | フロント |
 
-認証機能は標準ではありません。社内 LAN や VPN 内での利用を想定しています。必要に応じて nginx の Basic 認証や HTTPS を設定してください。
+パイプラインの各サービスは
+[phantom-taskservice](https://github.com/hyperion13th144m/phantom/blob/main/libs/python/taskservice/README.md) の統一 API
+（`POST /tasks` / `GET /tasks/current` / `POST /tasks/current/cancel`）でタスクを操作する。
+どのサービスも「出力ファイルがあればスキップ」する冪等な作りなので、
+何度実行しても差分だけが処理される。
 
-## 画面イメージ
+## リポジトリ構成
 
-### 全文検索
-全文検索の結果には図面サムネイルも表示されます。
+uv workspace のモノレポ（fox / joker は npm プロジェクトなので workspace からは除外）。
 
-<img src="./assets/0search.jpg" alt="検索イメージ" width="820">
-
-### 絞込
-文書名などで絞り込みできます。
-
-<img src="./assets/1filter.jpg" alt="絞込イメージ" width="820">
-
-### 詳細表示
-「詳細」から文書本文を表示できます。
-
-<img src="./assets/2detail.jpg" alt="詳細イメージ" width="420">
-
-### 書誌検索
-発明者や出願人などで検索できます。
-
-<img src="./assets/3bib.jpg" alt="書誌検索イメージ" width="700">
-
-### メタデータ
-メタデータ（担当者、タグ、整理番号）を文書に付与できます。
-
-<img src="./assets/5-3-metadata-edit.jpg" alt="メタデータ編集イメージ" width="520">
+```
+services/            各サービス（crow, queen, noir, violet, panther, navi, skull, joker, fox, mona）
+libs/python/         Python 共有パッケージ（taskservice, docstore, jpo_schema）
+libs/typescript/     TypeScript 型生成用パッケージ（jpo-schema）
+libs/jpo-schema/     特許文書 XML → JSON 変換の XSLT 資産
+infra/es/            Elasticsearch のマッピングとプラグイン入りイメージ
+infra/nginx/         本番用リバースプロキシ設定
+scripts/             型定義・型ガードの生成スクリプト
+docs/                手順書（下記）
+```
 
 ## ドキュメント
 
-- [インストール](docs/INSTALL.md)
-- [データ収集・登録・復旧](docs/OPERATION.md)
-- [検索システムの使い方](docs/USAGE.md)
-- [推奨セキュリティ設定](docs/SECURITY.md)
+| ドキュメント | 内容 |
+| --- | --- |
+| [開発環境の用意](docs/development.md) | 必要なもの、`uv sync`、環境変数、各サービスの起動、テスト |
+| [本番環境のセットアップ](docs/production.md) | docker compose での構築、nginx のルーティング、更新とバックアップ |
+| [運用方法](docs/operations.md) | navi でのパイプライン実行、skull でのメタ情報管理と同期 |
+| [検索の使い方](docs/search.md) | joker の簡易検索・詳細検索・画像検索・書誌検索 |
 
+## ライセンス
 
-## 注意・免責
-
-- インターネット出願ソフトのデータは、表示・検索用のデータを取り出すために参照される、変更は一切加えない。
-- テストは十分ではありません。不具合が残っている可能性があります。
-- インターネット出願ソフトと同様に表示されるようにしているが、まったく同じではありません。特に発送系はほとんど調整していません。HTML はあくまで参考用です。
-- インターネット出願ソフトのデータは、外部のクラウド等に送信していない。ソースでそれを確認できます。
-- 予告なく公開停止することがある。
-- アップデートにより、再度、文書の収集・登録が必要になる場合があります。
-- アプリで何らかの損害を被っても本アプリ作者は責任を負いません。
-
-## お問い合わせ / Contact
-- バグ・機能要望 → Issues 
-  [GitHub Issue](https://github.com/hyperion13th144m/phantom/issues)
-
-- 質問・相談 → Discussions
-  [GitHub Discussions](https://github.com/hyperion13th144m/phantom/discussions)
-
-- その他 → hyperion13th144m+phantom [at] gmail.com
-
-## License
-
-詳細は [LICENSE.md](LICENSE.md) を参照してください。
+[License 1.0](LICENSE.md) — 非商用利用に限る。
