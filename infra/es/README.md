@@ -32,6 +32,10 @@ curl -X PUT localhost:9200/images \
 付与するのは `docId`（文書ディレクトリ名 = XML の SHA-256。`_id` にも使う）のみ。
 
 - `task` / `kind` / `extension` — manifest.json 由来（noir 機能A）
+- `sourceFormat` — 入力形式。`xml`（電子データから取り込んだもの）か
+  `html`（[cendrillon](https://github.com/hyperion13th144m/phantom/blob/main/services/cendrillon/README.md) が HTML から取り込んだもの）。
+  cendrillon だけが `html` を出力し、無い場合は panther が `xml` を補うので、
+  全文書が必ず持つ（joker の「データ種別」の絞り込みに使う）
 - 書誌事項（`law`・`documentName`・各種番号・`datetime`・出願人など）— noir 機能B
 - 文書テキスト（`inventionTitle` … `dependentClaims` など）— noir 機能B。
   kuromoji + 2-gram のマルチフィールド

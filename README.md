@@ -20,15 +20,19 @@
 
 文書の処理は5つのサービスを直列に流れるパイプラインで、
 そのあとを検索・閲覧・メタ情報の各サービスが受け持つ。
+XML が残っていない文書だけは cendrillon が別ルートで取り込み、panther から先は合流する。
 
 ```mermaid
 flowchart LR
     SRC[("電子データ<br/>SRC_DIR")] --> crow
+    HTMLSRC[("HTML + 画像<br/>CENDRILLON_SRC_DIR")] --> cendrillon
     crow --> queen --> noir --> violet --> panther --> ES[("Elasticsearch")]
     crow -. 書き込み .-> STORE[("文書ストア<br/>DST_DIR")]
     queen -.-> STORE
     noir -.-> STORE
     violet -.-> STORE
+    cendrillon -. 書き込み .-> STORE
+    STORE --> panther
     STORE --> mona
     ES --> joker
     ES <--> skull
@@ -43,10 +47,11 @@ flowchart LR
 | [noir](https://github.com/hyperion13th144m/phantom/blob/main/services/noir/README.md) | 書誌事項・本文テキストを抽出し、文書のエンベディングを計算する | パイプライン |
 | [violet](https://github.com/hyperion13th144m/phantom/blob/main/services/violet/README.md) | 画像ごとの図番号・説明・代表図フラグ・OCR・画像エンベディングを生成する | パイプライン |
 | [panther](https://github.com/hyperion13th144m/phantom/blob/main/services/panther/README.md) | 各サービスの JSON を突き合わせて Elasticsearch の文書・画像インデックスに登録する | パイプライン |
+| [cendrillon](https://github.com/hyperion13th144m/phantom/blob/main/services/cendrillon/README.md) | XML が無く HTML と画像しか残っていない文書を、crow〜violet と同じ形（エンベディング・OCR 込み）で `DST_DIR` に取り込む | パイプライン |
 | [navi](https://github.com/hyperion13th144m/phantom/blob/main/services/navi/README.md) | パイプライン全体の管制。タスクの開始・中止・進捗と一括実行の UI | 運用 |
 | [skull](https://github.com/hyperion13th144m/phantom/blob/main/services/skull/README.md) | メタ情報（整理番号・タグ・担当者）の管理 UI と Elasticsearch への同期 | 運用 |
 | [joker](https://github.com/hyperion13th144m/phantom/blob/main/services/joker/README.md) | 検索 UI・検索 API（Astro / SSR） | フロント |
-| [fox](https://github.com/hyperion13th144m/phantom/blob/main/services/fox/README.md) | 文書ビューア（Astro / SSR） | フロント |
+| [fox](https://github.com/hyperion13th144m/phantom/blob/main/services/fox/README.md) | 文書ビューア（Astro / SSR）。XML 由来・HTML 由来のどちらも表示する | フロント |
 | [mona](https://github.com/hyperion13th144m/phantom/blob/main/services/mona/README.md) | 文書ストアのファイル配信（JSON・画像） | フロント |
 
 パイプラインの各サービスは
@@ -60,7 +65,7 @@ flowchart LR
 uv workspace のモノレポ（fox / joker は npm プロジェクトなので workspace からは除外）。
 
 ```
-services/            各サービス（crow, queen, noir, violet, panther, navi, skull, joker, fox, mona）
+services/            各サービス（crow, queen, noir, violet, cendrillon, panther, navi, skull, joker, fox, mona）
 libs/python/         Python 共有パッケージ（taskservice, docstore, jpo_schema）
 libs/typescript/     TypeScript 型生成用パッケージ（jpo-schema）
 libs/jpo-schema/     特許文書 XML → JSON 変換の XSLT 資産

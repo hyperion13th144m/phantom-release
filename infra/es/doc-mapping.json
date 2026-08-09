@@ -42,6 +42,8 @@
         "properties": {
             "docId": { "type": "keyword" },
 
+            "sourceFormat": { "type": "keyword" },
+
             "task": { "type": "keyword" },
             "kind": { "type": "keyword" },
             "extension": { "type": "keyword" },

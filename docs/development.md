@@ -143,6 +143,7 @@ uv run mona    --port "$MONA_PORT"
 uv run violet  --port "$VIOLET_PORT"
 uv run noir    --port "$NOIR_PORT"
 uv run panther --port "$PANTHER_PORT"
+uv run cendrillon    --port "$CENDRILLON_PORT"
 uv run skull   --port "$SKULL_PORT"
 uv run navi    --port "$NAVI_PORT"
 ```
@@ -159,7 +160,7 @@ fox / joker は Astro なので npm から起動する。開発中は `npm run d
 全部起動したら health を確認する。
 
 ```bash
-for p in 8000 8001 8002 8003 8004 8005 8006 8007 4321 4322; do
+for p in 8000 8001 8002 8003 8004 8005 8006 8007 8008 4321 4322; do
   printf "%s: " "$p"; curl -s "http://localhost:$p/health"; echo
 done
 ```
@@ -195,6 +196,7 @@ uv run --package mona    pytest services/mona/tests
 uv run --package noir    pytest services/noir/tests
 uv run --package violet  pytest services/violet/tests
 uv run --package panther pytest services/panther/tests
+uv run --package cendrillon    pytest services/cendrillon/tests
 uv run --package navi    pytest services/navi/tests
 uv run --package skull   pytest services/skull/tests
 uv run pytest libs/python/taskservice/tests

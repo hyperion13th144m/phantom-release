@@ -11,14 +11,179 @@ Elasticsearch をまとめて動かす。ホストに出るのは nginx の1ポ�
 | | 目安 |
 | --- | --- |
 | Docker Engine + Compose v2 | 最新 |
-| メモリ | Elasticsearch に 4 GB（`ES_MEM_LIMIT`）+ noir / violet のモデル分で 8 GB 以上 |
+| メモリ | **16 GB 推奨**（最低 8 GB）。下の「メモリの見積もり」を参照 |
+| OS | Linux。Windows の場合は Docker Desktop + WSL2 で動くが、先に「[Windows（Docker Desktop + WSL2）の場合](#windowsdocker-desktop--wsl2の場合)」を読むこと |
 | ディスク | 文書ストア（文書1件あたり数百 KB〜数 MB）+ ES インデックス + モデルキャッシュ数 GB |
 
-Elasticsearch のためにホスト側の設定を1つ入れる。
+### メモリの見積もり
+
+エンベディングのモデルが大きく、noir と violet はモデルを読んだあと常駐させ続ける
+（検索クエリの変換に使うため）。実測値は次のとおり。
+
+| サービス | 常駐 | 備考 |
+| --- | --- | --- |
+| violet | 2.3 GB | open_clip xlm-roberta-base-ViT-B-32 |
+| noir | 1.2 GB | cl-nagoya/ruri-v3-130m |
+| Elasticsearch | 1.2 GB | ヒープ 2 GB 指定時 |
+| cendrillon | 0.6 GB（待機）/ 2.8 GB（取り込み中） | 両方のモデルを読むが、タスクが終わると解放する |
+| queen | 0.4 GB | XSLT の saxonche がプロセス内に JVM を持つ |
+| joker / fox / skull / navi / panther / crow / mona | 各 50〜100 MB | 合計 0.6 GB |
+
+ピークはパイプライン実行中で、HTML入力（cendrillon）を含めると約 9 GB。
+OS と docker の分を足して **16 GB** あれば何も考えずに運用できる。
+
+使えるメモリが 10 GB 前後の場合は `ES_JAVA_OPTS=-Xms1g -Xmx1g` /
+`ES_MEM_LIMIT=2g` にし、cendrillon の取り込みは他の段と分けて実行する
+（手順は「[16 GB のホストでの回し方](#16-gb-のホストでの回し方)」）。
+
+各コンテナには `mem_limit` と `memswap_limit` を同じ値で設定してある。
+**memswap_limit を揃えるとそのコンテナはスワップを使わなくなる**ので、
+上限を超えたコンテナはスワップに逃げずに OOM kill され、`restart: unless-stopped`
+で戻る。1つのサービスがスワップを食い潰してホスト全体が反応しなくなるのを
+防ぐための設定なので、外さないこと。値は `.env.docker` の `*_MEM_LIMIT` で調整する。
+
+Elasticsearch のためにホスト側の設定を1つ入れる（Linux ホストの場合。
+Docker Desktop + WSL2 では既定で設定済みなので不要）。
 
 ```bash
 sudo sysctl -w vm.max_map_count=262144
 echo 'vm.max_map_count=262144' | sudo tee /etc/sysctl.d/99-phantom.conf
+```
+
+## Windows（Docker Desktop + WSL2）の場合
+
+Windows でも動くが、下の手順に入る前に手当てが要る点が4つある。
+
+### メモリを WSL2 に割り当てる
+
+WSL2 は既定でホスト搭載メモリの50%しか VM に渡さない。phantom のピークは
+約 9 GB なので、既定のままでは足りない。
+`C:\Users\<ユーザー名>\.wslconfig` を作って割り当てを決める。
+
+搭載 16 GB のノート PC の場合（Windows 本体に 6 GB 残す想定）:
+
+```ini
+[wsl2]
+memory=10GB
+processors=4
+swap=8GB
+```
+
+搭載 32 GB あるなら `memory=16GB` にしてよく、その場合は後述の
+「16 GB のホストでの回し方」は気にしなくてよい。
+
+書いたら反映する。
+
+```powershell
+wsl --shutdown
+```
+
+そのあと Docker Desktop を再起動し、WSL 側で割り当てを確認する。
+
+```bash
+free -g && nproc
+```
+
+Docker Desktop の Settings → Resources → WSL Integration で、使う distro の
+統合を有効にしておくこと。
+
+### データは WSL の ext4 に置く（`/mnt/c` に置かない）
+
+文書ストアは1文書あたり manifest + 元画像 + WebP 3サイズ + JSON 4つと、
+小さいファイルが大量に並ぶ。`/mnt/c/...`（Windows ドライブ）は 9p 経由なので、
+この形のアクセスが極端に遅くなる。`PHANTOM_DATA_DIR` は WSL の ext4 側に置く。
+
+```bash
+sudo install -d -o 1000 -g 1000 /var/lib/phantom/data
+```
+
+**リポジトリも WSL 内に clone すること。** compose が `./infra/es` と
+`./infra/nginx/nginx.conf` を相対パスでバインドしているのと、git の autocrlf で
+シェルスクリプトの改行が壊れるのを避けるため。
+
+元データ（`PHANTOM_SRC_DIR`）が Windows 側にある場合、read-only マウントなので
+`/mnt/c` のままでも動きはするが、取り込みのたびに全走査するので WSL 側に
+コピーしたほうが速い。
+
+### 日本語ファイル名が壊れていないか確かめる
+
+[cendrillon](https://github.com/hyperion13th144m/phantom/blob/main/services/cendrillon/README.md) は **HTML のファイル名が cp932 で
+169バイト（発送書類は71バイト）の固定長**であることを前提に、出願番号・受付番号・
+提出日を取り出している。Windows 経由でコピーすると NTFS の UTF-16 → WSL の UTF-8
+変換が挟まるので、取り込み前に長さを確かめておく。
+
+```bash
+find "$PHANTOM_SRC_DIR" -iname '*.HTM' -printf '%f\n' \
+  | python3 -c "import sys; [print(len(l.rstrip().rsplit('.',1)[0].encode('cp932','replace'))) for l in sys.stdin]" \
+  | sort -u
+```
+
+出てくるのが `169` と `71` だけなら正常。他の値が混ざっていたらファイル名が
+変質しているので、コピー方法を見直す（WSL 内で `cp` するのが確実）。
+
+### Elasticsearch とスワップの設定
+
+`vm.max_map_count` は Docker Desktop の WSL2 バックエンドが既定で 262144 を
+設定するので、通常は追加設定が要らない（上の `sysctl` は WSL2 では不要）。
+確認するなら次のとおり。
+
+```powershell
+wsl -d docker-desktop sysctl vm.max_map_count
+```
+
+足りない場合や、`memswap_limit` について警告が出る場合は `.wslconfig` に足す。
+
+```ini
+[wsl2]
+kernelCommandLine = sysctl.vm.max_map_count=262144 swapaccount=1
+```
+
+### 16 GB のホストでの回し方
+
+VM に 10 GB しか渡せないので、`.env.docker` で Elasticsearch を絞る。
+
+```bash
+ES_JAVA_OPTS=-Xms1g -Xmx1g
+ES_MEM_LIMIT=2g
+```
+
+これで待機時は約 4.5 GB に収まる。問題はパイプライン実行中で、noir と violet は
+自分の段が終わってもモデルを抱えたままなので、そのあとに cendrillon が動くと
+3つ分が重なって 9 GB 近くになる。
+
+**HTML入力も使うなら、navi の「パイプライン開始」（一括実行）は使わず、
+サービスカードの「開始」で1段ずつ回す。**
+
+1. `crow` → `queen` → `noir` → `violet` を順に開始する（各カードの
+   `skipped` が総件数と一致したら次へ）
+2. noir と violet を再起動してモデルを落とす（合計 3.5 GB 空く）
+3. `cendrillon` → `panther` を順に開始する
+
+```bash
+docker compose --env-file .env.docker restart noir violet
+```
+
+これでピークが 6 GB 程度に収まる。cendrillon はタスクが終わるとモデルを
+解放するので、3 のあとに追加の再起動は要らない。
+
+コマンドで回す場合は、nginx 経由（`PHANTOM_HTTP_PORT`、既定 8080）で navi の
+API を叩く。前の段が終わってから次を投げること。
+
+```bash
+curl -X POST localhost:8080/api/services/cendrillon/start -H 'content-type: application/json' -d '{"params": {}}'
+```
+
+```bash
+curl -s localhost:8080/api/services | python3 -m json.tool | grep -A3 '"name": "cendrillon"'
+```
+
+HTML入力を使わないなら、この節は気にせず「パイプライン開始」で一括実行して
+かまわない（cendrillon の段は対象0件で即座に終わる）。
+
+メモリ上限に当たって落ちていないかは次で確認できる。
+
+```bash
+docker inspect --format '{{.Name}} OOMKilled={{.State.OOMKilled}}' $(docker compose --env-file .env.docker ps -q)
 ```
 
 ## 1. ファイルを配置する
@@ -45,7 +210,7 @@ docker login ghcr.io
 コンテナは uid=gid=1000 で動くので、書き込み先は 1000 が書けるようにしておく。
 
 ```bash
-# 展開先（crow / queen / noir / violet が書き、mona / panther が読む）
+# 展開先（crow / queen / noir / violet / cendrillon が書き、mona / panther が読む）
 sudo install -d -o 1000 -g 1000 /var/lib/phantom/data
 ```
 
@@ -66,6 +231,7 @@ cp .env.docker.sample .env.docker
 | 変数 | 説明 |
 | --- | --- |
 | `PHANTOM_SRC_DIR` | インターネット出願ソフトの電子データの場所（read-only でマウント） |
+| `PHANTOM_HTML_SRC_DIR` | XML が無く HTML + 画像しか残っていない文書の場所（cendrillon 用・read-only）。無ければ `PHANTOM_SRC_DIR` と同じでよい |
 | `PHANTOM_DATA_DIR` | 文書ストアの場所 |
 | `PHANTOM_HTTP_PORT` | nginx が待ち受けるホスト側ポート（既定 8080） |
 | `PHANTOM_PUBLIC_URL` | ブラウザから見える phantom のベース URL。joker が fox へのリンクを組み立てるのに使う |
@@ -157,6 +323,20 @@ docker compose --env-file .env.docker logs -f --tail=100
 fox / joker は `LOG_DIR_FOX` / `LOG_DIR_JOKER`（`fox-log` / `joker-log` ボリューム）に
 ファイル出力する。
 
+サービスが勝手に再起動している場合は、メモリ上限に当たって OOM kill された
+可能性がある。`OOMKilled` が `true` なら `.env.docker` の `*_MEM_LIMIT` を上げる。
+
+```bash
+docker inspect --format '{{.Name}} OOMKilled={{.State.OOMKilled}} restarts={{.RestartCount}}' \
+  $(docker compose --env-file .env.docker ps -q)
+```
+
+いま各コンテナがどれだけ使っているかは次で見る。
+
+```bash
+docker stats --no-stream
+```
+
 ## ボリュームとバックアップ
 
 | ボリューム | 内容 | バックアップ |
@@ -164,7 +344,7 @@ fox / joker は `LOG_DIR_FOX` / `LOG_DIR_JOKER`（`fox-log` / `joker-log` ボリ
 | `${PHANTOM_DATA_DIR}`（ホストのディレクトリ） | 文書ストア（展開済み文書・画像・JSON） | 必要。失うと再取り込みになる |
 | `skull-data` | メタ情報 DB（SQLite）とタスク状態 | **必須。ここだけは再生成できない** |
 | `es-data` | Elasticsearch のインデックス | 任意（パイプライン再実行で再生成できる） |
-| `crow-state` / `queen-state` / `noir-state` / `violet-state` / `panther-state` | タスクの進捗・履歴 | 不要 |
+| `crow-state` / `queen-state` / `noir-state` / `violet-state` / `cendrillon-state` / `panther-state` | タスクの進捗・履歴 | 不要 |
 | `fox-config` | fox の表示設定 | 任意 |
 | `fox-log` / `joker-log` | アクセスログ | 任意 |
 | `hf-cache` | HuggingFace のモデル重み | 不要（再ダウンロードされる） |

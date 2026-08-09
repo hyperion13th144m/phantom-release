@@ -15,7 +15,7 @@
 ```
 電子データを SRC_DIR に置く
         ↓
-navi で「パイプライン開始」            … crow → queen → noir → violet → panther
+navi で「パイプライン開始」            … crow → queen → noir → violet → cendrillon → panther
         ↓
 joker で検索できる状態になる
         ↓
@@ -35,13 +35,13 @@ skull で「同期開始」                   … 整理番号・タグ・担当
 
 画面は3つの部分からなる。
 
-- **パイプライン** — 5ステージの進行状況と、一括実行の開始・中止
-- **サービス** — タスクを持つ5サービスのカード。個別の開始・中止と進捗カウンタ
+- **パイプライン** — 6ステージの進行状況と、一括実行の開始・中止
+- **サービス** — タスクを持つ6サービスのカード。個別の開始・中止と進捗カウンタ
 - **その他のサービス** — タスクを持たない mona / fox / joker / skull の死活監視
 
 ## 一括実行
 
-「パイプライン開始」を押すと、crow → queen → noir → violet → panther を
+「パイプライン開始」を押すと、crow → queen → noir → violet → cendrillon → panther を
 「タスク投入 → 完了までポーリング → 次のステージ」で直列に実行する。
 実行中のステージは青、完了したステージは緑になる。
 
@@ -99,7 +99,7 @@ curl -X POST localhost:8005/api/services/crow/start \
 curl -X POST localhost:8005/api/services/crow/cancel
 
 # 各サービスを直接叩くこともできる（タスク名は crow=scan, queen=convert,
-# noir/violet=extract, panther=upload, skull=sync）
+# noir/violet=extract, cendrillon=ingest, panther=upload, skull=sync）
 curl -X POST localhost:8000/tasks -H 'content-type: application/json' \
   -d '{"name": "scan", "params": {}}'
 curl localhost:8000/tasks/current
@@ -121,7 +121,16 @@ curl -X POST localhost:8003/tasks -H 'content-type: application/json' \
   -d '{"name": "extract", "params": {}}'
 ```
 
-violet が終わったら panther を流して再投入する。
+HTML から取り込んだ文書（cendrillon）も同じモデルを使っているので、同じように
+消したうえで cendrillon も流す。cendrillon は無い JSON だけを作り直すので、
+`document-properties.json` を残しておけばテキスト側は再計算されない。
+
+```bash
+curl -X POST localhost:8008/tasks -H 'content-type: application/json' \
+  -d '{"name": "ingest", "params": {}}'
+```
+
+終わったら panther を流して再投入する。
 
 ```bash
 curl -X POST localhost:8006/tasks -H 'content-type: application/json' \
@@ -134,7 +143,7 @@ curl -X POST localhost:8006/tasks -H 'content-type: application/json' \
 | --- | --- |
 | ステージが `failed` で止まる | サービスカードの失敗一覧、そのサービスのログ |
 | panther がタスクを開始しない | `ES_MAPPING_DIR` にマッピングファイルがあるか、Elasticsearch に繋がるか |
-| panther の `skipped` が多い | その文書に `document-properties.json` / `images-information.json` / `images-properties.json` が揃っていない（noir / queen / violet を先に流す） |
+| panther の `skipped` が多い | その文書に `document-properties.json` / `images-information.json` / `images-properties.json` が揃っていない（noir / queen / violet、HTML 入力なら cendrillon を先に流す） |
 | 特定の文書だけ作り直したい | 文書ディレクトリの該当する出力 JSON を消して再実行する |
 | サービスのランプが赤 | そのサービスが落ちている。`*_URL` の設定と health を確認する |
 
