@@ -165,7 +165,7 @@ services:
 
   joker:
     container_name: joker
-    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:4b75989ef53f4ca228610ce1f4e744521d3147d65d1094619aea0e661c716569
+    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:9e1fdd81a8a3a5d72b434c57fbd81d45b23fd82f55aef8bfb613a33647af94fd
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
