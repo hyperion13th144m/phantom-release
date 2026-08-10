@@ -20,21 +20,37 @@ Elasticsearch をまとめて動かす。ホストに出るのは nginx の1ポ�
 エンベディングのモデルが大きく、noir と violet はモデルを読んだあと常駐させ続ける
 （検索クエリの変換に使うため）。実測値は次のとおり。
 
-| サービス | 常駐 | 備考 |
-| --- | --- | --- |
-| violet | 2.3 GB | open_clip xlm-roberta-base-ViT-B-32 |
-| noir | 1.2 GB | cl-nagoya/ruri-v3-130m |
-| Elasticsearch | 1.2 GB | ヒープ 2 GB 指定時 |
-| cendrillon | 0.6 GB（待機）/ 2.8 GB（取り込み中） | 両方のモデルを読むが、タスクが終わると解放する |
-| queen | 0.4 GB | XSLT の saxonche がプロセス内に JVM を持つ |
-| joker / fox / skull / navi / panther / crow / mona | 各 50〜100 MB | 合計 0.6 GB |
+| サービス | 常駐 | ロード時ピーク | 備考 |
+| --- | --- | --- | --- |
+| violet | 2.7 GB | 4.0 GB | open_clip xlm-roberta-base-ViT-B-32 |
+| noir | 0.7 GB | 0.7 GB | cl-nagoya/ruri-v3-130m |
+| Elasticsearch | 1.2 GB | — | ヒープ 2 GB 指定時 |
+| cendrillon | 0.6 GB（待機）/ 1.3 GB（取り込み中） | 1.5 GB | 両方のモデルを読むが、CLIP は画像側のタワーだけ。タスクが終わると解放する |
+| queen | 0.4 GB | — | XSLT の saxonche がプロセス内に JVM を持つ |
+| joker / fox / skull / navi / panther / crow / mona | 各 50〜100 MB | — | 合計 0.6 GB |
+
+**`*_MEM_LIMIT` は常駐ではなくロード時ピークに合わせること。** open_clip の
+checkpoint は safetensors が用意されておらず、1.4 GB の `.bin` を `torch.load`
+するため、空のモデル本体と読み込んだ重みが一瞬だけ二重に乗る。常駐 2.7 GB の
+violet に 3 GB を割り当てると、ロードの最中に OOM kill されて起動と再起動を
+繰り返す（ログは `Loading full pretrained weights from: ...` の直後で切れ、
+`exited with code 137` になる）。
+
+cendrillon だけはこの二重取りを避けてある。画像しか変換しないので CLIP の
+テキストタワー（1.0 GB）を読まず、骨格を meta デバイス上に作ってから
+`visual.` の重みだけを mmap で流し込む。ピークが 3.7 GB → 1.5 GB になる
+（詳しくは [violet の README](https://github.com/hyperion13th144m/phantom/blob/main/services/violet/README.md)）。
+なお cendrillon のピークにはエンベディング1件分の一時メモリが乗り、
+8192 トークン級の長い文書だと +1.1 GB まで伸びる。`CENDRILLON_MEM_LIMIT`
+の既定 3 GB はその分を見込んだ値。
 
 ピークはパイプライン実行中で、HTML入力（cendrillon）を含めると約 9 GB。
 OS と docker の分を足して **16 GB** あれば何も考えずに運用できる。
 
 使えるメモリが 10 GB 前後の場合は `ES_JAVA_OPTS=-Xms1g -Xmx1g` /
-`ES_MEM_LIMIT=2g` にし、cendrillon の取り込みは他の段と分けて実行する
-（手順は「[16 GB のホストでの回し方](#16-gb-のホストでの回し方)」）。
+`ES_MEM_LIMIT=2g` にする。それでピーク 7 GB 程度に収まり、パイプラインは
+一括実行のままでよい（段ごとの積み上げは
+「[16 GB のホストでの回し方](#16-gb-のホストでの回し方)」）。
 
 各コンテナには `mem_limit` と `memswap_limit` を同じ値で設定してある。
 **memswap_limit を揃えるとそのコンテナはスワップを使わなくなる**ので、
@@ -147,24 +163,37 @@ ES_JAVA_OPTS=-Xms1g -Xmx1g
 ES_MEM_LIMIT=2g
 ```
 
-これで待機時は約 4.5 GB に収まる。問題はパイプライン実行中で、noir と violet は
-自分の段が終わってもモデルを抱えたままなので、そのあとに cendrillon が動くと
-3つ分が重なって 9 GB 近くになる。
+WSL2 では VM 自体（カーネル + Docker Desktop）が 1〜1.5 GB 使うので、10 GB の
+割り当てのうちコンテナに回せるのは 8.5 GB ほど。段ごとの積み上げは次のとおり
+（モデルを読む前の起動直後を「待機」とした。noir と violet がモデルを抱えた
+ままの待機は 5.3 GB）。
 
-**HTML入力も使うなら、navi の「パイプライン開始」（一括実行）は使わず、
-サービスカードの「開始」で1段ずつ回す。**
+| 段 | 内訳 | 合計 |
+| --- | --- | --- |
+| 待機 | ES 0.8 + queen 0.4 + 小物8つ 0.7 | 1.9 GB |
+| crow → queen | 変わらず | 2.0 GB |
+| noir | + 0.7 | 2.6 GB |
+| **violet** | **+ 4.0（CLIP のロード時ピーク）** | **5.9 GB** |
+| violet 終了後 | violet 2.7 を抱えたまま | 5.3 GB |
+| cendrillon → panther | + 1.5 | 6.8 GB |
 
-1. `crow` → `queen` → `noir` → `violet` を順に開始する（各カードの
-   `skipped` が総件数と一致したら次へ）
-2. noir と violet を再起動してモデルを落とす（合計 3.5 GB 空く）
-3. `cendrillon` → `panther` を順に開始する
+**一番きついのは violet が CLIP を読む瞬間**で、ここは削れない（violet は joker の
+画像セマンティック検索で CLIP のテキストタワーを使うため）。8.5 GB に対して
+2.5 GB 残るので、**navi の「パイプライン開始」（一括実行）で通る**。
+
+noir と violet は自分の段が終わってもモデルを抱えたままなので、以前は
+そのあとに cendrillon が動くと3つ分が重なって 9 GB 近くになり、
+1段ずつ回して途中で noir / violet を再起動する必要があった。cendrillon が
+CLIP の画像側しか読まなくなって 1.5 GB で済むようになったので、この手順は
+要らなくなっている。
+
+それでも足りない場合（ES を `-Xms2g` に戻したい、他のコンテナも同居している等）は、
+サービスカードの「開始」で1段ずつ回し、noir と violet を落としてから
+cendrillon に進めば 3.5 GB 空く。
 
 ```bash
 docker compose --env-file .env.docker restart noir violet
 ```
-
-これでピークが 6 GB 程度に収まる。cendrillon はタスクが終わるとモデルを
-解放するので、3 のあとに追加の再起動は要らない。
 
 コマンドで回す場合は、nginx 経由（`PHANTOM_HTTP_PORT`、既定 8080）で navi の
 API を叩く。前の段が終わってから次を投げること。
@@ -176,9 +205,6 @@ curl -X POST localhost:8080/api/services/cendrillon/start -H 'content-type: appl
 ```bash
 curl -s localhost:8080/api/services | python3 -m json.tool | grep -A3 '"name": "cendrillon"'
 ```
-
-HTML入力を使わないなら、この節は気にせず「パイプライン開始」で一括実行して
-かまわない（cendrillon の段は対象0件で即座に終わる）。
 
 メモリ上限に当たって落ちていないかは次で確認できる。
 
@@ -325,6 +351,9 @@ fox / joker は `LOG_DIR_FOX` / `LOG_DIR_JOKER`（`fox-log` / `joker-log` ボリ
 
 サービスが勝手に再起動している場合は、メモリ上限に当たって OOM kill された
 可能性がある。`OOMKilled` が `true` なら `.env.docker` の `*_MEM_LIMIT` を上げる。
+ログに `exited with code 137` が出ていれば、`OOMKilled` の値によらず OOM kill
+とみなしてよい（下のコマンドは*いま動いている*コンテナの状態を見るので、
+`restart: unless-stopped` で再起動したあとだと `false` に戻っている）。
 
 ```bash
 docker inspect --format '{{.Name}} OOMKilled={{.State.OOMKilled}} restarts={{.RestartCount}}' \

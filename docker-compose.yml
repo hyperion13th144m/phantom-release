@@ -13,6 +13,9 @@
 # メモリの小さいホストで、1サービスがスワップを食い潰してホスト全体が
 # 反応しなくなるのを防ぐため（restart: unless-stopped で自動的に戻る）。
 # 既定値は実測値 + 余裕。ホストに合わせて .env.docker の *_MEM_LIMIT で調整する。
+# 基準にするのは常駐量ではなくモデルのロード時ピーク。open_clip の checkpoint は
+# safetensors が無く 1.4GB の .bin を torch.load するので、空のモデル本体と
+# checkpoint の重みが一瞬だけ二重に乗り、常駐 2.7GB に対してピークは 4.0GB になる。
 
 services:
   # ---- パイプライン（crow → queen → noir → violet → panther、HTML入力は cendrillon）--
@@ -88,7 +91,7 @@ services:
 
   violet:
     container_name: violet
-    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:2ad2be6c08ce1dfe51e56f0ffdd7dead872b83efbe1ba080d00a79feb8f72a5c
+    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:b4381d50217f1cd19dc204857b7402f0ae1e9486a41e18a50cd2281ef8f23bbd
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -101,8 +104,8 @@ services:
       OCR_LANG: ${OCR_LANG:-jpn+eng}
       EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
       HF_HOME: /var/cache/huggingface
-    mem_limit: ${VIOLET_MEM_LIMIT:-3g}
-    memswap_limit: ${VIOLET_MEM_LIMIT:-3g}
+    mem_limit: ${VIOLET_MEM_LIMIT:-6g}
+    memswap_limit: ${VIOLET_MEM_LIMIT:-6g}
     volumes:
       - ${PHANTOM_DATA_DIR}:/data-dir
       - violet-state:/var/lib/violet
@@ -114,7 +117,7 @@ services:
   # PHANTOM_HTML_SRC_DIR が未設定なら SRC_DIR を見る（何も見つからず空振りするだけ）
   cendrillon:
     container_name: cendrillon
-    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:2bb9d6d055b3d126c890b2bd181d91d05446bbfb9014998d20d9e9e6fea01f68
+    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:d27d8efb9e7439ed40e9b80d7440fb157cbd91ebee9f6fc55b46d4dc5d93c29d
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -131,11 +134,11 @@ services:
       NOIR_EMBEDDING_DEVICE: ${NOIR_EMBEDDING_DEVICE:-cpu}
       OCR_LANG: ${OCR_LANG:-jpn+eng}
       EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
-      # タスク終了後にモデルを解放する（2つで 2.7GB 常駐するため）
+      # タスク終了後にモデルを解放する（取り込み中は 1.3GB 常駐するため）
       CENDRILLON_KEEP_MODELS: ${CENDRILLON_KEEP_MODELS:-false}
       HF_HOME: /var/cache/huggingface
-    mem_limit: ${CENDRILLON_MEM_LIMIT:-4g}
-    memswap_limit: ${CENDRILLON_MEM_LIMIT:-4g}
+    mem_limit: ${CENDRILLON_MEM_LIMIT:-3g}
+    memswap_limit: ${CENDRILLON_MEM_LIMIT:-3g}
     volumes:
       - ${PHANTOM_HTML_SRC_DIR:-${PHANTOM_SRC_DIR}}:/html-src-dir:ro
       - ${PHANTOM_DATA_DIR}:/data-dir
@@ -197,7 +200,7 @@ services:
 
   fox:
     container_name: fox
-    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:86c469c766ba797717f17097287da0d87914e29c875829e258fa123d5fed095e
+    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:42620cc70d5cafaf00dc9ecdb3ca8a55704a3133c50b87e19c993275ae96c864
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
