@@ -43,7 +43,7 @@ services:
 
   queen:
     container_name: queen
-    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:93cca925f037f41d123891aef83ff9a7ec4c0237cf251e2541989d7843e1b314
+    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:dcb79932334f2bdec030a0146bf05464a132fded638815fc4414d8ae01d85636
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -65,7 +65,7 @@ services:
 
   noir:
     container_name: noir
-    image: ghcr.io/hyperion13th144m/phantom-noir@sha256:72616d3fcee5eb8b46f2bdda11ad6dba4fef977678c61b3812d7f00ff7285206
+    image: ghcr.io/hyperion13th144m/phantom-noir@sha256:9f40cc5854af57f035f35458b46cae4165a925510db725d0bab21c61661ebc19
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -91,7 +91,7 @@ services:
 
   violet:
     container_name: violet
-    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:b4381d50217f1cd19dc204857b7402f0ae1e9486a41e18a50cd2281ef8f23bbd
+    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:22cd64bd1a9d6839aa63bfae89ea77f75ec7923d8fc2a45999e00a0701c768f8
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -117,7 +117,7 @@ services:
   # PHANTOM_HTML_SRC_DIR が未設定なら SRC_DIR を見る（何も見つからず空振りするだけ）
   cendrillon:
     container_name: cendrillon
-    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:d27d8efb9e7439ed40e9b80d7440fb157cbd91ebee9f6fc55b46d4dc5d93c29d
+    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:11545d7e16baf5241c868f68aec18b1d69edbc92d4e6dcfe732942729c703279
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
