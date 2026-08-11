@@ -117,7 +117,7 @@ services:
   # PHANTOM_HTML_SRC_DIR が未設定なら SRC_DIR を見る（何も見つからず空振りするだけ）
   cendrillon:
     container_name: cendrillon
-    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:11545d7e16baf5241c868f68aec18b1d69edbc92d4e6dcfe732942729c703279
+    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:8d89e5d9d4e16cc36e3c86f495f5ac093ffec5174c35224d7463326f4255183d
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
