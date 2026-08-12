@@ -228,6 +228,10 @@ uvx ruff format libs services
   自動検出する。別の場所に置く場合は `XSL_DIR` で指定する。
 - **セマンティック検索が失敗する** — joker はクエリのベクトル化を noir の
   `POST /embeddings/query` に投げるので、noir が起動している必要がある。
+- **cendrillon の取り込みが全件 failed になる** — cendrillon はモデルを持たず、
+  テキストを noir、画像と OCR を violet の API に投げる。両方が起動していて
+  `NOIR_URL` / `VIOLET_URL` が正しいこと、そして violet が cendrillon と
+  同じ `DST_DIR` を見ていることを確認する（画像は本体ではなく在り処を送る）。
 - **fox の型エラー** — `scripts/copy-ts-schema.sh` まで実行して
   `services/fox/src/interfaces/generated/` を作る。
 - **パイプラインを途中から流し直したい** — 各サービスは出力 JSON の有無で

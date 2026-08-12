@@ -121,9 +121,11 @@ curl -X POST localhost:8003/tasks -H 'content-type: application/json' \
   -d '{"name": "extract", "params": {}}'
 ```
 
-HTML から取り込んだ文書（cendrillon）も同じモデルを使っているので、同じように
-消したうえで cendrillon も流す。cendrillon は無い JSON だけを作り直すので、
+HTML から取り込んだ文書（cendrillon）も同じモデルを使っている（cendrillon は
+violet の API を叩いて計算してもらっている）ので、同じように消したうえで
+cendrillon も流す。cendrillon は無い JSON だけを作り直すので、
 `document-properties.json` を残しておけばテキスト側は再計算されない。
+violet が起動していないと全件 failed になる。
 
 ```bash
 curl -X POST localhost:8008/tasks -H 'content-type: application/json' \

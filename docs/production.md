@@ -25,9 +25,8 @@ Elasticsearch をまとめて動かす。ホストに出るのは nginx の1ポ�
 | violet | 2.7 GB | 4.0 GB | open_clip xlm-roberta-base-ViT-B-32 |
 | noir | 0.7 GB | 0.7 GB | cl-nagoya/ruri-v3-130m |
 | Elasticsearch | 1.2 GB | — | ヒープ 2 GB 指定時 |
-| cendrillon | 0.6 GB（待機）/ 1.3 GB（取り込み中） | 1.5 GB | 両方のモデルを読むが、CLIP は画像側のタワーだけ。タスクが終わると解放する |
 | queen | 0.4 GB | — | XSLT の saxonche がプロセス内に JVM を持つ |
-| joker / fox / skull / navi / panther / crow / mona | 各 50〜100 MB | — | 合計 0.6 GB |
+| cendrillon / joker / fox / skull / navi / panther / crow / mona | 各 50〜100 MB | — | 合計 0.7 GB |
 
 **`*_MEM_LIMIT` は常駐ではなくロード時ピークに合わせること。** open_clip の
 checkpoint は safetensors が用意されておらず、1.4 GB の `.bin` を `torch.load`
@@ -36,15 +35,15 @@ violet に 3 GB を割り当てると、ロードの最中に OOM kill されて
 繰り返す（ログは `Loading full pretrained weights from: ...` の直後で切れ、
 `exited with code 137` になる）。
 
-cendrillon だけはこの二重取りを避けてある。画像しか変換しないので CLIP の
-テキストタワー（1.0 GB）を読まず、骨格を meta デバイス上に作ってから
-`visual.` の重みだけを mmap で流し込む。ピークが 3.7 GB → 1.5 GB になる
-（詳しくは [violet の README](https://github.com/hyperion13th144m/phantom/blob/main/services/violet/README.md)）。
-なお cendrillon のピークにはエンベディング1件分の一時メモリが乗り、
-8192 トークン級の長い文書だと +1.1 GB まで伸びる。`CENDRILLON_MEM_LIMIT`
-の既定 3 GB はその分を見込んだ値。
+**cendrillon はモデルを持たない。** HTML 入力でも埋め込みは XML 入力と同じ
+モデルで作る必要があるので、テキストは noir の `POST /embeddings/document`、
+画像とOCR は violet の `POST /embeddings/image` / `POST /ocr` に投げる。
+同じモデルを2つのコンテナに常駐させずに済むぶん、cendrillon 自身は
+Pillow しか積んでおらず 512 MB で足りる（以前は 3 GB 割り当てていた）。
+画像は本体を送らずに在り処だけを送るので、cendrillon と violet が同じ
+`PHANTOM_DATA_DIR` をマウントしていることが前提になる。
 
-ピークはパイプライン実行中で、HTML入力（cendrillon）を含めると約 9 GB。
+ピークはパイプライン実行中で約 7.5 GB。
 OS と docker の分を足して **16 GB** あれば何も考えずに運用できる。
 
 使えるメモリが 10 GB 前後の場合は `ES_JAVA_OPTS=-Xms1g -Xmx1g` /
@@ -175,25 +174,25 @@ WSL2 では VM 自体（カーネル + Docker Desktop）が 1〜1.5 GB 使うの
 | noir | + 0.7 | 2.6 GB |
 | **violet** | **+ 4.0（CLIP のロード時ピーク）** | **5.9 GB** |
 | violet 終了後 | violet 2.7 を抱えたまま | 5.3 GB |
-| cendrillon → panther | + 1.5 | 6.8 GB |
+| cendrillon → panther | + 0.1（cendrillon は 90 MB ほど） | 5.4 GB |
 
 **一番きついのは violet が CLIP を読む瞬間**で、ここは削れない（violet は joker の
 画像セマンティック検索で CLIP のテキストタワーを使うため）。8.5 GB に対して
 2.5 GB 残るので、**navi の「パイプライン開始」（一括実行）で通る**。
 
-noir と violet は自分の段が終わってもモデルを抱えたままなので、以前は
-そのあとに cendrillon が動くと3つ分が重なって 9 GB 近くになり、
-1段ずつ回して途中で noir / violet を再起動する必要があった。cendrillon が
-CLIP の画像側しか読まなくなって 1.5 GB で済むようになったので、この手順は
-要らなくなっている。
+cendrillon の段でモデルが増えないのは、cendrillon が noir / violet の API を
+叩いて計算してもらっているため。以前は cendrillon も自前でモデルを読んでいて
+3つ分が重なり、1段ずつ回して途中で noir / violet を再起動する必要があった。
+その代わり、**cendrillon の段では noir と violet を落とせない**。
+
+なお violet が並列ワーカーで動いているあいだ、CLIP を読んでいるのは
+ワーカープロセスのほうで、親プロセスは空のままのことがある。その場合
+cendrillon の最初の1枚で親が CLIP（両タワー）を読むので、上の表の 2.7 GB は
+violet の段ではなく cendrillon の段で乗る。合計は変わらず、`VIOLET_MEM_LIMIT`
+の 6 GB がロード時ピークを見込んだ値なのも変わらない。
 
 それでも足りない場合（ES を `-Xms2g` に戻したい、他のコンテナも同居している等）は、
-サービスカードの「開始」で1段ずつ回し、noir と violet を落としてから
-cendrillon に進めば 3.5 GB 空く。
-
-```bash
-docker compose --env-file .env.docker restart noir violet
-```
+サービスカードの「開始」で1段ずつ回す。
 
 コマンドで回す場合は、nginx 経由（`PHANTOM_HTTP_PORT`、既定 8080）で navi の
 API を叩く。前の段が終わってから次を投げること。

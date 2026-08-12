@@ -32,6 +32,8 @@ flowchart LR
     noir -.-> STORE
     violet -.-> STORE
     cendrillon -. 書き込み .-> STORE
+    cendrillon -. エンベディング・OCR .-> noir
+    cendrillon -.-> violet
     STORE --> panther
     STORE --> mona
     ES --> joker
@@ -47,7 +49,7 @@ flowchart LR
 | [noir](https://github.com/hyperion13th144m/phantom/blob/main/services/noir/README.md) | 書誌事項・本文テキストを抽出し、文書のエンベディングを計算する | パイプライン |
 | [violet](https://github.com/hyperion13th144m/phantom/blob/main/services/violet/README.md) | 画像ごとの図番号・説明・代表図フラグ・OCR・画像エンベディングを生成する | パイプライン |
 | [panther](https://github.com/hyperion13th144m/phantom/blob/main/services/panther/README.md) | 各サービスの JSON を突き合わせて Elasticsearch の文書・画像インデックスに登録する | パイプライン |
-| [cendrillon](https://github.com/hyperion13th144m/phantom/blob/main/services/cendrillon/README.md) | XML が無く HTML と画像しか残っていない文書を、crow〜violet と同じ形（エンベディング・OCR 込み）で `DST_DIR` に取り込む | パイプライン |
+| [cendrillon](https://github.com/hyperion13th144m/phantom/blob/main/services/cendrillon/README.md) | XML が無く HTML と画像しか残っていない文書を、crow〜violet と同じ形で `DST_DIR` に取り込む。エンベディングと OCR は noir / violet の API に投げる（モデルを二重に常駐させないため） | パイプライン |
 | [navi](https://github.com/hyperion13th144m/phantom/blob/main/services/navi/README.md) | パイプライン全体の管制。タスクの開始・中止・進捗と一括実行の UI | 運用 |
 | [skull](https://github.com/hyperion13th144m/phantom/blob/main/services/skull/README.md) | メタ情報（整理番号・タグ・担当者）の管理 UI と Elasticsearch への同期 | 運用 |
 | [joker](https://github.com/hyperion13th144m/phantom/blob/main/services/joker/README.md) | 検索 UI・検索 API（Astro / SSR） | フロント |

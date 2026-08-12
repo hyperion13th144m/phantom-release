@@ -21,7 +21,7 @@ services:
   # ---- パイプライン（crow → queen → noir → violet → panther、HTML入力は cendrillon）--
   crow:
     container_name: crow
-    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:4675b3a998fc8cbbfc7ea16a42da9faa5288ae1e59cfdb80219ccc968fdc17f2
+    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:f8d1116820fe38b2a6af1e6b63eecd62c823fd91ac80e61f1b01f3b97f3038c5
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -43,7 +43,7 @@ services:
 
   queen:
     container_name: queen
-    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:dcb79932334f2bdec030a0146bf05464a132fded638815fc4414d8ae01d85636
+    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:4305f2d6080e702d7be1535f7da29b6a116b76c7df18db74f332990f7b523b4e
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -65,7 +65,7 @@ services:
 
   noir:
     container_name: noir
-    image: ghcr.io/hyperion13th144m/phantom-noir@sha256:9f40cc5854af57f035f35458b46cae4165a925510db725d0bab21c61661ebc19
+    image: ghcr.io/hyperion13th144m/phantom-noir@sha256:ed15d8f4ef8f0770e0c83297ddf073adf4a02ac6cf45eaaf5443800b82d2c5bf
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -91,7 +91,7 @@ services:
 
   violet:
     container_name: violet
-    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:22cd64bd1a9d6839aa63bfae89ea77f75ec7923d8fc2a45999e00a0701c768f8
+    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:24b95f3e17b01e04f3fc51685e3d5fe19d527e575aed626fa7267f454f333d4d
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -115,9 +115,13 @@ services:
 
   # XML が無く HTML + 画像しか残っていない文書の取り込み。
   # PHANTOM_HTML_SRC_DIR が未設定なら SRC_DIR を見る（何も見つからず空振りするだけ）
+  #
+  # エンベディングと OCR は自前で計算せず noir / violet の API に投げる。
+  # 同じモデルを2つのコンテナに常駐させずに済むので、ここは Pillow しか積んでいない。
+  # 画像は本体を送らず在り処だけを送るので、violet と同じ /data-dir が要る
   cendrillon:
     container_name: cendrillon
-    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:8d89e5d9d4e16cc36e3c86f495f5ac093ffec5174c35224d7463326f4255183d
+    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:f94ed8202ae991fb3a23c681b01cfd4ef8599c29ce3bfbc17761399abcda3023
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -128,28 +132,24 @@ services:
       CENDRILLON_STATE_DIR: /var/lib/cendrillon/tasks
       CENDRILLON_HOST: 0.0.0.0
       CENDRILLON_PORT: 8008
-      # エンベディングと OCR の設定は noir / violet と必ず同じにする
-      NOIR_EMBEDDING_PROVIDER: ${NOIR_EMBEDDING_PROVIDER:-sentence-transformers}
-      NOIR_EMBEDDING_MODEL: ${NOIR_EMBEDDING_MODEL:-cl-nagoya/ruri-v3-130m}
-      NOIR_EMBEDDING_DEVICE: ${NOIR_EMBEDDING_DEVICE:-cpu}
-      OCR_LANG: ${OCR_LANG:-jpn+eng}
-      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
-      # タスク終了後にモデルを解放する（取り込み中は 1.3GB 常駐するため）
-      CENDRILLON_KEEP_MODELS: ${CENDRILLON_KEEP_MODELS:-false}
-      HF_HOME: /var/cache/huggingface
-    mem_limit: ${CENDRILLON_MEM_LIMIT:-3g}
-    memswap_limit: ${CENDRILLON_MEM_LIMIT:-3g}
+      # テキストエンベディングは noir、画像エンベディングと OCR は violet
+      NOIR_URL: http://noir:8004
+      VIOLET_URL: http://violet:8003
+    mem_limit: ${CENDRILLON_MEM_LIMIT:-512m}
+    memswap_limit: ${CENDRILLON_MEM_LIMIT:-512m}
     volumes:
       - ${PHANTOM_HTML_SRC_DIR:-${PHANTOM_SRC_DIR}}:/html-src-dir:ro
       - ${PHANTOM_DATA_DIR}:/data-dir
       - cendrillon-state:/var/lib/cendrillon
-      - hf-cache:/var/cache/huggingface
+    depends_on:
+      - noir
+      - violet
     networks:
       - phantom-network
 
   panther:
     container_name: panther
-    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:8ed34502a30605ace9778d8fc52ac14ecbf6afff3ac80f0a225036beb8dc446f
+    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:3eecba643f3b47d80ad3195962bf2822a2f0185b988d96b059622edf0402ed7a
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -182,7 +182,7 @@ services:
   # ---- 文書配信・UI ------------------------------------------------------
   mona:
     container_name: mona
-    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:b68b034521c7676d52cdd41f57248de4c7da779ce007b7bd0f2829145f893e24
+    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:a80363febf78760c9eee885b13672fb44f88a7e2784b53a36e4f26d2fb41dd8a
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -223,7 +223,7 @@ services:
 
   joker:
     container_name: joker
-    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:2cfe7210b8b3161c413971a75a24872d8f34c34d89541ee199d347e6becf0e31
+    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:7e96c5f04c299d48c1f652d40a531777157533249edf97edde2a8dd2c02ddde5
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -243,6 +243,8 @@ services:
       VIOLET_URL: http://violet:8003
       # 検索結果から文書ページへ張るリンク。ブラウザから見える URL を指定する
       FOX_URL: ${PHANTOM_PUBLIC_URL:-http://localhost:8080}/fox
+      # 管理画面（navi）へのリンクは既定の相対パス /navi でよい。
+      # nginx が同じオリジンの /navi/ を navi に回している
       LOG_DIR_JOKER: /var/log/joker
     mem_limit: ${JOKER_MEM_LIMIT:-512m}
     memswap_limit: ${JOKER_MEM_LIMIT:-512m}
@@ -256,7 +258,7 @@ services:
 
   skull:
     container_name: skull
-    image: ghcr.io/hyperion13th144m/phantom-skull@sha256:c938e5ae86617b197b615142c63b3c99d812c15c7b4f77f7d99aad0e12d7cd6d
+    image: ghcr.io/hyperion13th144m/phantom-skull@sha256:af69dce1ff677a400ae225ec024bf4eb143337084f5f5eb32d31a2c061ce80d9
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -285,7 +287,7 @@ services:
   # ---- パイプライン管制 --------------------------------------------------
   navi:
     container_name: navi
-    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:4371e98b28d7ef12ef37bc149a79d89917319f6a61328516b67718b7b26af493
+    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:356756b172b8889a7b9071197a2d546ce505181e07aa23aca1a36180012b2a45
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
