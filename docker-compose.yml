@@ -121,7 +121,7 @@ services:
   # 画像は本体を送らず在り処だけを送るので、violet と同じ /data-dir が要る
   cendrillon:
     container_name: cendrillon
-    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:97cd60e64427ab35ed9f6d525cb55a102cfa4e1a9ee74ab010fd7bc2b4e4be80
+    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:cb2d15403cc2c72a98cc5ac2ce52f6894a4f635156bbcc5e17d1c2fc8efcd79f
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
