@@ -200,7 +200,7 @@ services:
 
   fox:
     container_name: fox
-    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:dbb197733591de23775efcc0c31c6f1e51329c2e120a18460c6a9e227be33964
+    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:2697a63beb727338a0ea6c6cdff07ac5d23a61092e8bf69196dc7802f4cde200
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
