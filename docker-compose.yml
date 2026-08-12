@@ -43,7 +43,7 @@ services:
 
   queen:
     container_name: queen
-    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:4305f2d6080e702d7be1535f7da29b6a116b76c7df18db74f332990f7b523b4e
+    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:5003b234a9a949e9d4654f520f42f4c2ae281788668759753ac569bd942e0710
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -91,7 +91,7 @@ services:
 
   violet:
     container_name: violet
-    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:24b95f3e17b01e04f3fc51685e3d5fe19d527e575aed626fa7267f454f333d4d
+    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:50ee42ecc77f573a58f36f85dcdc5d261256b848d3ef47f7c7e98bb16f76d302
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -121,7 +121,7 @@ services:
   # 画像は本体を送らず在り処だけを送るので、violet と同じ /data-dir が要る
   cendrillon:
     container_name: cendrillon
-    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:f94ed8202ae991fb3a23c681b01cfd4ef8599c29ce3bfbc17761399abcda3023
+    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:97cd60e64427ab35ed9f6d525cb55a102cfa4e1a9ee74ab010fd7bc2b4e4be80
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -200,7 +200,7 @@ services:
 
   fox:
     container_name: fox
-    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:42620cc70d5cafaf00dc9ecdb3ca8a55704a3133c50b87e19c993275ae96c864
+    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:dbb197733591de23775efcc0c31c6f1e51329c2e120a18460c6a9e227be33964
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
