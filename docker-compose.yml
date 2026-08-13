@@ -21,7 +21,7 @@ services:
   # ---- パイプライン（crow → queen → noir → violet → panther、HTML入力は cendrillon）--
   crow:
     container_name: crow
-    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:9ec8f07c79b0a94569b6f23a410cf642ca54df565f4513ec45950ee909de1968
+    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:c1376b4522b8cbbea8058ad10423b6d4a641b965b2c3e1015218f9387d504fc6
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -125,7 +125,7 @@ services:
   # 画像は本体を送らず在り処だけを送るので、violet と同じ /data-dir が要る
   cendrillon:
     container_name: cendrillon
-    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:361de5a8871909e81a8643cb138838912cf5c8fcb8b732fe452c6b6764fd4640
+    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:3a26a43638992e798aadf2eaa703c3b84df77735758eb219a21a6c435dc32614
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
