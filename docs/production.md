@@ -283,10 +283,10 @@ docker compose --env-file .env.docker ps
 マッピングファイルが無ければタスクを開始しない
 （dynamic mapping で型が壊れるのを防ぐため）。
 
-crow / cendrillon は `infra/whitelist/white-list.json`（コンテナ内
-`/infra/whitelist`）を起動時に読み、そこに無い書類は取り込まない。
-取り込む書類を増やしたら、このファイルを更新して
-`docker compose restart crow cendrillon` する。作り方は
+crow / cendrillon は `infra/whitelist/white-list.json` を起動時に読み、そこに
+無い書類は取り込まない。このファイルはイメージに焼いてある（コンテナ内
+`/infra/whitelist`）ので、取り込む書類を増やしたらリポジトリを更新して
+イメージを入れ替える。作り方は
 [infra/whitelist/README.md](../infra/whitelist/README.md) を参照。
 
 ## 5. 公開されるパス

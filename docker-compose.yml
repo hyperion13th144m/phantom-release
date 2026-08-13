@@ -21,7 +21,7 @@ services:
   # ---- パイプライン（crow → queen → noir → violet → panther、HTML入力は cendrillon）--
   crow:
     container_name: crow
-    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:c1376b4522b8cbbea8058ad10423b6d4a641b965b2c3e1015218f9387d504fc6
+    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:50552fced49db7e4035c554b85088a72dc15f865d1d61e915b935bca52da67e4
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -32,7 +32,7 @@ services:
       CROW_STATE_DIR: /var/lib/crow/tasks
       CROW_HOST: 0.0.0.0
       CROW_PORT: 8000
-      # 取り込む書類の対象表（infra/whitelist/README.md）。
+      # 取り込む書類の対象表（infra/whitelist/README.md）。イメージ同梱。
       # 対象外の書類コードは展開せずスキップする
       WHITE_LIST_PATH: /infra/whitelist/white-list.json
     mem_limit: ${CROW_MEM_LIMIT:-512m}
@@ -40,7 +40,6 @@ services:
     volumes:
       - ${PHANTOM_SRC_DIR}:/src-dir:ro
       - ${PHANTOM_DATA_DIR}:/data-dir
-      - ./infra/whitelist:/infra/whitelist:ro
       - crow-state:/var/lib/crow
     networks:
       - phantom-network
@@ -125,7 +124,7 @@ services:
   # 画像は本体を送らず在り処だけを送るので、violet と同じ /data-dir が要る
   cendrillon:
     container_name: cendrillon
-    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:3a26a43638992e798aadf2eaa703c3b84df77735758eb219a21a6c435dc32614
+    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:a3fa5ef9dd096273a13854dfd6e01b7e2883397a81e80591039ce6d3a61e155b
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -146,7 +145,6 @@ services:
     volumes:
       - ${PHANTOM_HTML_SRC_DIR:-${PHANTOM_SRC_DIR}}:/html-src-dir:ro
       - ${PHANTOM_DATA_DIR}:/data-dir
-      - ./infra/whitelist:/infra/whitelist:ro
       - cendrillon-state:/var/lib/cendrillon
     depends_on:
       - noir
