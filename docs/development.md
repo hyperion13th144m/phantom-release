@@ -200,6 +200,7 @@ uv run --package cendrillon    pytest services/cendrillon/tests
 uv run --package navi    pytest services/navi/tests
 uv run --package skull   pytest services/skull/tests
 uv run pytest libs/python/taskservice/tests
+uv run pytest libs/python/whitelist/tests
 ```
 
 fox / joker は vitest。

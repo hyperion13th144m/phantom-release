@@ -1,3 +1,19 @@
+## v2.1.0 - 2026-08-13
+
+- phantom-crow:    ghcr.io/hyperion13th144m/phantom-crow@sha256:9ec8f07c79b0a94569b6f23a410cf642ca54df565f4513ec45950ee909de1968
+- phantom-queen:   ghcr.io/hyperion13th144m/phantom-queen@sha256:bfeb690399ce37b43495c1f6d7f542b532e92c5ada16f9392eba95ea054def6e
+- phantom-mona:    ghcr.io/hyperion13th144m/phantom-mona@sha256:230c0457c58283036cbcf3568e854fe9948d64c5c17214fd4d67eabbf51fd0e2
+- phantom-noir:    ghcr.io/hyperion13th144m/phantom-noir@sha256:bce24d6d530139d02f73e8312e019baa81f88ece5e4557ddae3cb2bde8a1b45b
+- phantom-violet:  ghcr.io/hyperion13th144m/phantom-violet@sha256:2e6607affc564dcac928910a72a33ed2189c474a429318515556ecb82eae4ccf
+- phantom-cendrillon: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:361de5a8871909e81a8643cb138838912cf5c8fcb8b732fe452c6b6764fd4640
+- phantom-panther: ghcr.io/hyperion13th144m/phantom-panther@sha256:c7eb29550f7aa2347a17b9f9053e487dec09f4a9d60baee24a25728fc5491563
+- phantom-navi:    ghcr.io/hyperion13th144m/phantom-navi@sha256:f532c46528ac0f0a7cd8c2ff07067cfabe89099951ae05236cecb1c2607f7362
+- phantom-skull:   ghcr.io/hyperion13th144m/phantom-skull@sha256:6da79d6b334f863f21e118a62cb7e568a89a2d3ab218f7cd9bd122825dd86082
+- phantom-fox:     ghcr.io/hyperion13th144m/phantom-fox@sha256:2697a63beb727338a0ea6c6cdff07ac5d23a61092e8bf69196dc7802f4cde200
+- phantom-joker:   ghcr.io/hyperion13th144m/phantom-joker@sha256:7e96c5f04c299d48c1f652d40a531777157533249edf97edde2a8dd2c02ddde5
+
+ダイジェスト固定により同一の環境を再現できます。
+
 ## v2.0.9 - 2026-08-12
 
 - phantom-crow:    ghcr.io/hyperion13th144m/phantom-crow@sha256:f8d1116820fe38b2a6af1e6b63eecd62c823fd91ac80e61f1b01f3b97f3038c5

@@ -68,10 +68,11 @@ uv workspace のモノレポ（fox / joker は npm プロジェクトなので w
 
 ```
 services/            各サービス（crow, queen, noir, violet, cendrillon, panther, navi, skull, joker, fox, mona）
-libs/python/         Python 共有パッケージ（taskservice, docstore, jpo_schema）
+libs/python/         Python 共有パッケージ（taskservice, docstore, jpo_schema, whitelist）
 libs/typescript/     TypeScript 型生成用パッケージ（jpo-schema）
 libs/jpo-schema/     特許文書 XML → JSON 変換の XSLT 資産
 infra/es/            Elasticsearch のマッピングとプラグイン入りイメージ
+infra/whitelist/     取り込む書類の対象表（crow / cendrillon が読む）
 infra/nginx/         本番用リバースプロキシ設定
 scripts/             型定義・型ガードの生成スクリプト
 docs/                手順書（下記）

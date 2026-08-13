@@ -21,7 +21,7 @@ services:
   # ---- パイプライン（crow → queen → noir → violet → panther、HTML入力は cendrillon）--
   crow:
     container_name: crow
-    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:f8d1116820fe38b2a6af1e6b63eecd62c823fd91ac80e61f1b01f3b97f3038c5
+    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:9ec8f07c79b0a94569b6f23a410cf642ca54df565f4513ec45950ee909de1968
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -32,18 +32,22 @@ services:
       CROW_STATE_DIR: /var/lib/crow/tasks
       CROW_HOST: 0.0.0.0
       CROW_PORT: 8000
+      # 取り込む書類の対象表（infra/whitelist/README.md）。
+      # 対象外の書類コードは展開せずスキップする
+      WHITE_LIST_PATH: /infra/whitelist/white-list.json
     mem_limit: ${CROW_MEM_LIMIT:-512m}
     memswap_limit: ${CROW_MEM_LIMIT:-512m}
     volumes:
       - ${PHANTOM_SRC_DIR}:/src-dir:ro
       - ${PHANTOM_DATA_DIR}:/data-dir
+      - ./infra/whitelist:/infra/whitelist:ro
       - crow-state:/var/lib/crow
     networks:
       - phantom-network
 
   queen:
     container_name: queen
-    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:5003b234a9a949e9d4654f520f42f4c2ae281788668759753ac569bd942e0710
+    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:bfeb690399ce37b43495c1f6d7f542b532e92c5ada16f9392eba95ea054def6e
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -65,7 +69,7 @@ services:
 
   noir:
     container_name: noir
-    image: ghcr.io/hyperion13th144m/phantom-noir@sha256:ed15d8f4ef8f0770e0c83297ddf073adf4a02ac6cf45eaaf5443800b82d2c5bf
+    image: ghcr.io/hyperion13th144m/phantom-noir@sha256:bce24d6d530139d02f73e8312e019baa81f88ece5e4557ddae3cb2bde8a1b45b
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -91,7 +95,7 @@ services:
 
   violet:
     container_name: violet
-    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:50ee42ecc77f573a58f36f85dcdc5d261256b848d3ef47f7c7e98bb16f76d302
+    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:2e6607affc564dcac928910a72a33ed2189c474a429318515556ecb82eae4ccf
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -121,7 +125,7 @@ services:
   # 画像は本体を送らず在り処だけを送るので、violet と同じ /data-dir が要る
   cendrillon:
     container_name: cendrillon
-    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:cb2d15403cc2c72a98cc5ac2ce52f6894a4f635156bbcc5e17d1c2fc8efcd79f
+    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:361de5a8871909e81a8643cb138838912cf5c8fcb8b732fe452c6b6764fd4640
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -135,11 +139,14 @@ services:
       # テキストエンベディングは noir、画像エンベディングと OCR は violet
       NOIR_URL: http://noir:8004
       VIOLET_URL: http://violet:8003
+      # crow と同じ対象表。HTML には書類コードが無いので書類名で照合する
+      WHITE_LIST_PATH: /infra/whitelist/white-list.json
     mem_limit: ${CENDRILLON_MEM_LIMIT:-512m}
     memswap_limit: ${CENDRILLON_MEM_LIMIT:-512m}
     volumes:
       - ${PHANTOM_HTML_SRC_DIR:-${PHANTOM_SRC_DIR}}:/html-src-dir:ro
       - ${PHANTOM_DATA_DIR}:/data-dir
+      - ./infra/whitelist:/infra/whitelist:ro
       - cendrillon-state:/var/lib/cendrillon
     depends_on:
       - noir
@@ -149,7 +156,7 @@ services:
 
   panther:
     container_name: panther
-    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:3eecba643f3b47d80ad3195962bf2822a2f0185b988d96b059622edf0402ed7a
+    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:c7eb29550f7aa2347a17b9f9053e487dec09f4a9d60baee24a25728fc5491563
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -182,7 +189,7 @@ services:
   # ---- 文書配信・UI ------------------------------------------------------
   mona:
     container_name: mona
-    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:a80363febf78760c9eee885b13672fb44f88a7e2784b53a36e4f26d2fb41dd8a
+    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:230c0457c58283036cbcf3568e854fe9948d64c5c17214fd4d67eabbf51fd0e2
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -258,7 +265,7 @@ services:
 
   skull:
     container_name: skull
-    image: ghcr.io/hyperion13th144m/phantom-skull@sha256:af69dce1ff677a400ae225ec024bf4eb143337084f5f5eb32d31a2c061ce80d9
+    image: ghcr.io/hyperion13th144m/phantom-skull@sha256:6da79d6b334f863f21e118a62cb7e568a89a2d3ab218f7cd9bd122825dd86082
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -287,7 +294,7 @@ services:
   # ---- パイプライン管制 --------------------------------------------------
   navi:
     container_name: navi
-    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:356756b172b8889a7b9071197a2d546ce505181e07aa23aca1a36180012b2a45
+    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:f532c46528ac0f0a7cd8c2ff07067cfabe89099951ae05236cecb1c2607f7362
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
