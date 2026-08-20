@@ -347,14 +347,14 @@ services:
       - phantom-network
 
   # ---- Elasticsearch -----------------------------------------------------
-  # マッピングが analysis-kuromoji / analysis-icu を使うのでプラグイン入りの
-  # イメージを infra/es の Dockerfile からビルドする
+  # マッピングが analysis-kuromoji / analysis-icu を使うので、
+  # プラグインを入れたイメージを使う。
+  # 以前は利用者側の compose がビルドしていたが、プラグインの取得に
+  # elastic.co への到達性が要り、利用者のネットワークによっては失敗する。
+  # 他のサービスと同じく ghcr.io から pull する（infra/es は CI がビルドする）
   es:
     container_name: phantom-elasticsearch
-    image: phantom-elasticsearch
-    build:
-      context: ./infra/es
-      dockerfile: Dockerfile
+    image: ghcr.io/hyperion13th144m/phantom-elasticsearch@sha256:5a9355d03a646895aa21d657025596c4da727b12fd8a6d72666b4323268b0ebd
     restart: unless-stopped
     environment:
       discovery.type: single-node
