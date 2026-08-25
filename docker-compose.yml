@@ -58,8 +58,8 @@ services:
       XSL_DIR: /libs/jpo-schema/stylesheets/2.0
       QUEEN_HOST: 0.0.0.0
       QUEEN_PORT: 8001
-    mem_limit: ${QUEEN_MEM_LIMIT:-1g}
-    memswap_limit: ${QUEEN_MEM_LIMIT:-1g}
+    mem_limit: ${QUEEN_MEM_LIMIT:-2g}
+    memswap_limit: ${QUEEN_MEM_LIMIT:-2g}
     volumes:
       - ${PHANTOM_DATA_DIR}:/data-dir
       - queen-state:/var/lib/queen
@@ -140,8 +140,8 @@ services:
       VIOLET_URL: http://violet:8003
       # crow と同じ対象表。HTML には書類コードが無いので書類名で照合する
       WHITE_LIST_PATH: /infra/whitelist/white-list.json
-    mem_limit: ${CENDRILLON_MEM_LIMIT:-512m}
-    memswap_limit: ${CENDRILLON_MEM_LIMIT:-512m}
+    mem_limit: ${CENDRILLON_MEM_LIMIT:-2g}
+    memswap_limit: ${CENDRILLON_MEM_LIMIT:-2g}
     volumes:
       - ${PHANTOM_HTML_SRC_DIR:-${PHANTOM_SRC_DIR}}:/html-src-dir:ro
       - ${PHANTOM_DATA_DIR}:/data-dir
