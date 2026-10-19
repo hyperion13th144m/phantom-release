@@ -18,176 +18,47 @@
 # checkpoint の重みが一瞬だけ二重に乗り、常駐 2.7GB に対してピークは 4.0GB になる。
 
 services:
-  # ---- パイプライン（crow → queen → noir → violet → panther、HTML入力は cendrillon）--
-  crow:
-    container_name: crow
-    image: ghcr.io/hyperion13th144m/phantom-crow@sha256:4b97feb836926aff2d7f4b1dcabf4bd1e2f09ec1777283217405155684e0b540
-    restart: unless-stopped
-    environment:
-      LANG: ja_JP.UTF-8
-      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      SRC_DIR: /src-dir
-      DST_DIR: /data-dir
-      CROW_STATE_DIR: /var/lib/crow/tasks
-      CROW_HOST: 0.0.0.0
-      CROW_PORT: 8000
-      # 取り込む書類の対象表（infra/whitelist/README.md）。イメージ同梱。
-      # 対象外の書類コードは展開せずスキップする
-      WHITE_LIST_PATH: /infra/whitelist/white-list.json
-    mem_limit: ${CROW_MEM_LIMIT:-512m}
-    memswap_limit: ${CROW_MEM_LIMIT:-512m}
-    volumes:
-      - ${PHANTOM_SRC_DIR}:/src-dir:ro
-      - ${PHANTOM_DATA_DIR}:/data-dir
-      - crow-state:/var/lib/crow
-    networks:
-      - phantom-network
-
+  # ---- モデルサーバー ----------------------------------------------------
+  # モデルサーバー。ruri（文書・クエリ）と CLIP（画像・テキスト）を常駐させ、
+  # navi の取り込みと joker の検索の両方がこれを使う。
+  # 画像は {docId, filename} で受け取って /data-dir から読む
   queen:
     container_name: queen
-    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:bd054a979a287b0870cdbc37b592f238b1526011efa66cca411e8fd409e004e8
+    image: ghcr.io/hyperion13th144m/phantom-queen@sha256:a0bf129347db02ec5701383c46efdf40ec24902a2c399562c56cbf4f7091345b
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
       TZ: ${PHANTOM_TZ:-Asia/Tokyo}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DST_DIR: /data-dir
-      QUEEN_STATE_DIR: /var/lib/queen/tasks
-      # XSL はイメージに同梱済み（services/queen/Dockerfile）
-      XSL_DIR: /libs/jpo-schema/stylesheets/2.0
       QUEEN_HOST: 0.0.0.0
       QUEEN_PORT: 8001
-    mem_limit: ${QUEEN_MEM_LIMIT:-2g}
-    memswap_limit: ${QUEEN_MEM_LIMIT:-2g}
-    volumes:
-      - ${PHANTOM_DATA_DIR}:/data-dir
-      - queen-state:/var/lib/queen
-    networks:
-      - phantom-network
-
-  noir:
-    container_name: noir
-    image: ghcr.io/hyperion13th144m/phantom-noir@sha256:0ac0cb806c3bf556c446425f59446b8f5b244071bf370a60d5c8bfcdc6d0e5ed
-    restart: unless-stopped
-    environment:
-      LANG: ja_JP.UTF-8
-      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      DST_DIR: /data-dir
-      NOIR_STATE_DIR: /var/lib/noir/tasks
-      NOIR_HOST: 0.0.0.0
-      NOIR_PORT: 8004
+      # 0 なら torch の既定（物理コア数）
+      QUEEN_TORCH_THREADS: ${QUEEN_TORCH_THREADS:-0}
+      # 起動したら裏でモデルを読み始める（最初の依頼でダウンロードを待たされないように）
+      QUEEN_PRELOAD: ${QUEEN_PRELOAD:-1}
       NOIR_EMBEDDING_PROVIDER: ${NOIR_EMBEDDING_PROVIDER:-sentence-transformers}
       NOIR_EMBEDDING_MODEL: ${NOIR_EMBEDDING_MODEL:-cl-nagoya/ruri-v3-130m}
       NOIR_EMBEDDING_DEVICE: ${NOIR_EMBEDDING_DEVICE:-cpu}
+      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
       # モデルの重みは HF キャッシュに残して再起動時の再ダウンロードを避ける
       HF_HOME: /var/cache/huggingface
-    mem_limit: ${NOIR_MEM_LIMIT:-2g}
-    memswap_limit: ${NOIR_MEM_LIMIT:-2g}
+      # 1 にすると Hugging Face に問い合わせずにキャッシュから読む。ふだんは空でよい
+      # （一度モデルを読めたら queen が自分でオフラインに切り替える。services/queen/README.md）
+      HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-}
+    # 常駐 3.5GB 程度（ruri 0.7 ＋ CLIP 2.7）、読み込み時のピーク 4.5GB 程度
+    mem_limit: ${QUEEN_MEM_LIMIT:-6g}
+    memswap_limit: ${QUEEN_MEM_LIMIT:-6g}
     volumes:
-      - ${PHANTOM_DATA_DIR}:/data-dir
-      - noir-state:/var/lib/noir
+      - ${PHANTOM_DATA_DIR}:/data-dir:ro
       - hf-cache:/var/cache/huggingface
-    networks:
-      - phantom-network
-
-  violet:
-    container_name: violet
-    image: ghcr.io/hyperion13th144m/phantom-violet@sha256:7ea629974568bdae06d54346a7a1b4b1ce49ed832c14650684d28a83e032ad21
-    restart: unless-stopped
-    environment:
-      LANG: ja_JP.UTF-8
-      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      DST_DIR: /data-dir
-      VIOLET_STATE_DIR: /var/lib/violet/tasks
-      VIOLET_HOST: 0.0.0.0
-      VIOLET_PORT: 8003
-      OCR_LANG: ${OCR_LANG:-jpn+eng}
-      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
-      HF_HOME: /var/cache/huggingface
-    mem_limit: ${VIOLET_MEM_LIMIT:-6g}
-    memswap_limit: ${VIOLET_MEM_LIMIT:-6g}
-    volumes:
-      - ${PHANTOM_DATA_DIR}:/data-dir
-      - violet-state:/var/lib/violet
-      - hf-cache:/var/cache/huggingface
-    networks:
-      - phantom-network
-
-  # XML が無く HTML + 画像しか残っていない文書の取り込み。
-  # PHANTOM_HTML_SRC_DIR が未設定なら SRC_DIR を見る（何も見つからず空振りするだけ）
-  #
-  # エンベディングと OCR は自前で計算せず noir / violet の API に投げる。
-  # 同じモデルを2つのコンテナに常駐させずに済むので、ここは Pillow しか積んでいない。
-  # 画像は本体を送らず在り処だけを送るので、violet と同じ /data-dir が要る
-  cendrillon:
-    container_name: cendrillon
-    image: ghcr.io/hyperion13th144m/phantom-cendrillon@sha256:d55d970369a2e7c240a4df111af481c88f862d9bd76b682fa2150c56592c36fe
-    restart: unless-stopped
-    environment:
-      LANG: ja_JP.UTF-8
-      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      CENDRILLON_SRC_DIR: /html-src-dir
-      DST_DIR: /data-dir
-      CENDRILLON_STATE_DIR: /var/lib/cendrillon/tasks
-      CENDRILLON_HOST: 0.0.0.0
-      CENDRILLON_PORT: 8008
-      # テキストエンベディングは noir、画像エンベディングと OCR は violet
-      NOIR_URL: http://noir:8004
-      VIOLET_URL: http://violet:8003
-      # crow と同じ対象表。HTML には書類コードが無いので書類名で照合する
-      WHITE_LIST_PATH: /infra/whitelist/white-list.json
-    mem_limit: ${CENDRILLON_MEM_LIMIT:-2g}
-    memswap_limit: ${CENDRILLON_MEM_LIMIT:-2g}
-    volumes:
-      - ${PHANTOM_HTML_SRC_DIR:-${PHANTOM_SRC_DIR}}:/html-src-dir:ro
-      - ${PHANTOM_DATA_DIR}:/data-dir
-      - cendrillon-state:/var/lib/cendrillon
-    depends_on:
-      - noir
-      - violet
-    networks:
-      - phantom-network
-
-  panther:
-    container_name: panther
-    image: ghcr.io/hyperion13th144m/phantom-panther@sha256:47e96fc708ca4123bcdcf960707650cadb9910a29f95fca4b3512efa30f24fba
-    restart: unless-stopped
-    environment:
-      LANG: ja_JP.UTF-8
-      TZ: ${PHANTOM_TZ:-Asia/Tokyo}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      DST_DIR: /data-dir
-      PANTHER_STATE_DIR: /var/lib/panther/tasks
-      PANTHER_HOST: 0.0.0.0
-      PANTHER_PORT: 8006
-      ES_URL: http://es:9200
-      ES_USER: ${ES_USER:-elastic}
-      ES_PASSWORD: ${ES_PASSWORD:-}
-      ES_API_KEY: ${ES_API_KEY:-}
-      ES_DOC_INDEX: ${ES_DOC_INDEX:-documents}
-      ES_IMG_INDEX: ${ES_IMG_INDEX:-images}
-      # インデックス未作成時に panther がこのマッピングで作る
-      ES_MAPPING_DIR: /infra/es
-    mem_limit: ${PANTHER_MEM_LIMIT:-512m}
-    memswap_limit: ${PANTHER_MEM_LIMIT:-512m}
-    volumes:
-      - ${PHANTOM_DATA_DIR}:/data-dir
-      - ./infra/es:/infra/es:ro
-      - panther-state:/var/lib/panther
-    depends_on:
-      es:
-        condition: service_healthy
     networks:
       - phantom-network
 
   # ---- 文書配信・UI ------------------------------------------------------
   mona:
     container_name: mona
-    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:230c0457c58283036cbcf3568e854fe9948d64c5c17214fd4d67eabbf51fd0e2
+    image: ghcr.io/hyperion13th144m/phantom-mona@sha256:c9e235b4bfe816445b9de37c6de2fda22f8de311c3e515bac0e41531ac6b02d5
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -205,7 +76,7 @@ services:
 
   fox:
     container_name: fox
-    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:2697a63beb727338a0ea6c6cdff07ac5d23a61092e8bf69196dc7802f4cde200
+    image: ghcr.io/hyperion13th144m/phantom-fox@sha256:dbc0bcd4a6e494c34a0e9fca0ef91dbc527941c32afd6f95c25fbceb64148f34
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -228,7 +99,7 @@ services:
 
   joker:
     container_name: joker
-    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:7e96c5f04c299d48c1f652d40a531777157533249edf97edde2a8dd2c02ddde5
+    image: ghcr.io/hyperion13th144m/phantom-joker@sha256:9ce7a81eaa9481ef92215e64a8c813547f33a12458b344fe6900b58348c1fe34
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -243,9 +114,8 @@ services:
       ES_DOC_INDEX: ${ES_DOC_INDEX:-documents}
       ES_IMG_INDEX: ${ES_IMG_INDEX:-images}
       MONA_URL: http://mona:8002
-      NOIR_URL: http://noir:8004
-      # 画像のセマンティック検索でフレーズを CLIP ベクトルに変換する
-      VIOLET_URL: http://violet:8003
+      # 検索フレーズを、文書（ruri）・画像（CLIP）と同じ空間のベクトルに変換する
+      QUEEN_URL: http://queen:8001
       # 検索結果から文書ページへ張るリンク。ブラウザから見える URL を指定する
       FOX_URL: ${PHANTOM_PUBLIC_URL:-http://localhost:8080}/fox
       # 管理画面（navi）へのリンクは既定の相対パス /navi でよい。
@@ -263,7 +133,7 @@ services:
 
   skull:
     container_name: skull
-    image: ghcr.io/hyperion13th144m/phantom-skull@sha256:627cc66cd8bdf2e6a46f9995b464e2d5f3198f5013abae1a8bfa62613f5a6d99
+    image: ghcr.io/hyperion13th144m/phantom-skull@sha256:8e2f82a3777023ad56db2a644a376add0e5f3bfe1209b0cc7816096d0f13d0fd
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -289,10 +159,10 @@ services:
     networks:
       - phantom-network
 
-  # ---- パイプライン管制 --------------------------------------------------
+  # ---- 取り込みの管理（navi）---------------------------------------------
   navi:
     container_name: navi
-    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:f532c46528ac0f0a7cd8c2ff07067cfabe89099951ae05236cecb1c2607f7362
+    image: ghcr.io/hyperion13th144m/phantom-navi@sha256:c2aadd0ceeac1a859987071cbff8f77fc2e9530dae9ef0e59a7a0514842dd8f5
     restart: unless-stopped
     environment:
       LANG: ja_JP.UTF-8
@@ -300,26 +170,45 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       NAVI_HOST: 0.0.0.0
       NAVI_PORT: 8005
-      NAVI_POLL_INTERVAL: ${NAVI_POLL_INTERVAL:-2.0}
-      CROW_URL: http://crow:8000
-      QUEEN_URL: http://queen:8001
-      NOIR_URL: http://noir:8004
-      VIOLET_URL: http://violet:8003
-      CENDRILLON_URL: http://cendrillon:8008
-      PANTHER_URL: http://panther:8006
       MONA_URL: http://mona:8002
       # fox は base=/fox でビルドしてあるので /health も /fox 配下
       FOX_URL: http://fox:4321/fox
       JOKER_URL: http://joker:4322
       SKULL_URL: http://skull:8007
-    mem_limit: ${NAVI_MEM_LIMIT:-256m}
-    memswap_limit: ${NAVI_MEM_LIMIT:-256m}
+      QUEEN_URL: http://queen:8001
+      # ---- 取り込み（POST /api/runs、設計書 §2）----
+      # 環境変数の名前は、取り込みが複数のサービスに分かれていたころと同じ
+      SRC_DIR: /src-dir
+      CENDRILLON_SRC_DIR: /html-src-dir
+      DST_DIR: /data-dir
+      NAVI_STATE_DIR: /var/lib/navi
+      WHITE_LIST_PATH: /infra/whitelist/white-list.json
+      ES_URL: http://es:9200
+      ES_USER: ${ES_USER:-elastic}
+      ES_PASSWORD: ${ES_PASSWORD:-}
+      ES_API_KEY: ${ES_API_KEY:-}
+      ES_DOC_INDEX: ${ES_DOC_INDEX:-documents}
+      ES_IMG_INDEX: ${ES_IMG_INDEX:-images}
+      ES_MAPPING_DIR: /infra/es
+      OCR_LANG: ${OCR_LANG:-jpn+eng}
+      # 並列度（設計書 §2.4）
+      NAVI_DOC_CONCURRENCY: ${NAVI_DOC_CONCURRENCY:-4}
+      NAVI_OCR_SLOTS: ${NAVI_OCR_SLOTS:-4}
+      NAVI_IMAGE_WORKERS: ${NAVI_IMAGE_WORKERS:-4}
+    # XSLT（saxonche の JVM）と画像変換のワーカーを持つ
+    mem_limit: ${NAVI_MEM_LIMIT:-2g}
+    memswap_limit: ${NAVI_MEM_LIMIT:-2g}
+    volumes:
+      - ${PHANTOM_SRC_DIR}:/src-dir:ro
+      - ${PHANTOM_HTML_SRC_DIR:-${PHANTOM_SRC_DIR}}:/html-src-dir:ro
+      - ${PHANTOM_DATA_DIR}:/data-dir
+      - navi-state:/var/lib/navi
     depends_on:
-      - crow
-      - queen
-      - noir
-      - violet
-      - panther
+      queen:
+        condition: service_started
+      # 取り込みは実行の最初に ES のインデックスを確かめる
+      es:
+        condition: service_healthy
     networks:
       - phantom-network
 
@@ -354,7 +243,7 @@ services:
   # 他のサービスと同じく ghcr.io から pull する（infra/es は CI がビルドする）
   es:
     container_name: phantom-elasticsearch
-    image: ghcr.io/hyperion13th144m/phantom-elasticsearch@sha256:5a9355d03a646895aa21d657025596c4da727b12fd8a6d72666b4323268b0ebd
+    image: ghcr.io/hyperion13th144m/phantom-elasticsearch@sha256:a0945987e7d8a02ca8cdc765b3f8a4c4315617ee730525bf5ade1050c4055df6
     restart: unless-stopped
     environment:
       discovery.type: single-node
@@ -385,12 +274,7 @@ services:
 
 volumes:
   es-data:
-  crow-state:
-  queen-state:
-  noir-state:
-  violet-state:
-  cendrillon-state:
-  panther-state:
+  navi-state:
   skull-data:
   fox-config:
   fox-log:

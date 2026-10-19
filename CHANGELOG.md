@@ -1,3 +1,15 @@
+## v2.2.0 - 2026-10-19
+
+- phantom-mona:    ghcr.io/hyperion13th144m/phantom-mona@sha256:c9e235b4bfe816445b9de37c6de2fda22f8de311c3e515bac0e41531ac6b02d5
+- phantom-queen:   ghcr.io/hyperion13th144m/phantom-queen@sha256:a0bf129347db02ec5701383c46efdf40ec24902a2c399562c56cbf4f7091345b
+- phantom-navi:    ghcr.io/hyperion13th144m/phantom-navi@sha256:c2aadd0ceeac1a859987071cbff8f77fc2e9530dae9ef0e59a7a0514842dd8f5
+- phantom-skull:   ghcr.io/hyperion13th144m/phantom-skull@sha256:8e2f82a3777023ad56db2a644a376add0e5f3bfe1209b0cc7816096d0f13d0fd
+- phantom-fox:     ghcr.io/hyperion13th144m/phantom-fox@sha256:dbc0bcd4a6e494c34a0e9fca0ef91dbc527941c32afd6f95c25fbceb64148f34
+- phantom-joker:   ghcr.io/hyperion13th144m/phantom-joker@sha256:9ce7a81eaa9481ef92215e64a8c813547f33a12458b344fe6900b58348c1fe34
+- phantom-elasticsearch: ghcr.io/hyperion13th144m/phantom-elasticsearch@sha256:a0945987e7d8a02ca8cdc765b3f8a4c4315617ee730525bf5ade1050c4055df6
+
+ダイジェスト固定により同一の環境を再現できます。
+
 ## v2.1.5 - 2026-08-25
 
 - phantom-crow:    ghcr.io/hyperion13th144m/phantom-crow@sha256:4b97feb836926aff2d7f4b1dcabf4bd1e2f09ec1777283217405155684e0b540

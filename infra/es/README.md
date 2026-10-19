@@ -1,13 +1,14 @@
 # Elasticsearch マッピング
 
-`DST_DIR` 配下に各サービスが生成する JSON を Elasticsearch に登録するための
+`DST_DIR` 配下に navi の各段が生成する JSON を Elasticsearch に登録するための
 インデックスマッピング。phantom-old の doc-mapping.json / img-mapping.json を
-新パイプラインの出力に合わせて再構成したもの。
+phantom の出力に合わせて再構成したもの。インデックスが無ければ、navi が取り込みの最初にこのマッピングで作る。
+以下の「〜の段」は navi の段（[運用方法](../../docs/operations.md) の「取り込みの流れ」）。
 
 | ファイル | インデックス | データソース |
 | --- | --- | --- |
-| `doc-mapping.json` | 文書（1文書=1ドキュメント） | noir の `json/document-properties.json` |
-| `img-mapping.json` | 画像（1画像=1ドキュメント） | violet の `json/images-properties.json` + queen の `json/images-information.json` + `document-properties.json`（書誌の非正規化） |
+| `doc-mapping.json` | 文書（1文書=1ドキュメント） | 書誌の段の `json/document-properties.json` |
+| `img-mapping.json` | 画像（1画像=1ドキュメント） | 画像の段の `json/images-properties.json` + 変換の段の `json/images-information.json` + `document-properties.json`（書誌の非正規化） |
 
 ## 前提プラグイン
 
@@ -31,27 +32,27 @@ curl -X PUT localhost:9200/images \
 `document-properties.json` のキーをそのまま登録する前提。追加で登録側が
 付与するのは `docId`（文書ディレクトリ名 = XML の SHA-256。`_id` にも使う）のみ。
 
-- `task` / `kind` / `extension` — manifest.json 由来（noir 機能A）
+- `task` / `kind` / `extension` — manifest.json 由来（書誌の段）
 - `sourceFormat` — 入力形式。`xml`（電子データから取り込んだもの）か
-  `html`（[cendrillon](https://github.com/hyperion13th144m/phantom/blob/main/services/cendrillon/README.md) が HTML から取り込んだもの）。
-  cendrillon だけが `html` を出力し、無い場合は panther が `xml` を補うので、
+  `html`（HTML の段が HTML から取り込んだもの）。
+  HTML の段だけが `html` を出力し、無い場合は登録の段が `xml` を補うので、
   全文書が必ず持つ（joker の「データ種別」の絞り込みに使う）
-- 書誌事項（`law`・`documentName`・各種番号・`datetime`・出願人など）— noir 機能B
-- 文書テキスト（`inventionTitle` … `dependentClaims` など）— noir 機能B。
+- 書誌事項（`law`・`documentName`・各種番号・`datetime`・出願人など）— 書誌の段
+- 文書テキスト（`inventionTitle` … `dependentClaims` など）— 書誌の段。
   kuromoji + 2-gram のマルチフィールド
-- `embeddings` — noir 機能C。cl-nagoya/ruri-v3-130m の 512 次元・cosine。
+- `embeddings` — 書誌の段（計算は queen）。cl-nagoya/ruri-v3-130m の 512 次元・cosine。
   テキストが空の文書にはキー自体が無い（dense_vector は欠損可）。
   `embeddingModel` / `embeddingDimensions` で登録時にモデル・次元の整合を検証する
-- `ocrText` — violet の `images-properties.json` 由来。同一文書の全画像の
+- `ocrText` — 画像の段の `images-properties.json` 由来。同一文書の全画像の
   `ocrText` を登録側で連結して1フィールドにする。OCR 対象画像
-  （queen の `detect_image_kind` が `other-images`）は英語版明細書が約8割・
+  （変換の段の `detect_image_kind` が `other-images`）は英語版明細書が約8割・
   日本語論文が約2割のため、メインアナライザは `english`（ステミング付き）、
   日本語検索用に `ocrText.ja`（kuromoji）、部分一致用に `ocrText.ngram` を併設。
   検索時は `ocrText` / `ocrText.ja` / `ocrText.ngram` を multi_match でまとめて
   当てるとよい
 
 - `intRefNumber` / `extRefNumber` / `tags` / `assignees` — skull が管理する
-  メタ情報（[skull](https://github.com/hyperion13th144m/phantom/blob/main/services/skull/README.md)）。panther は登録せず、
+  メタ情報（[skull](https://github.com/hyperion13th144m/phantom/blob/main/services/skull/README.md)）。登録の段は登録せず、
   skull の同期タスクが後から付与・更新・削除する（画像インデックスにも同じ
   フィールドを持たせ、文書単位で同期する）。既存インデックスには skull が
   `put_mapping` で自動追加する
@@ -59,10 +60,10 @@ curl -X PUT localhost:9200/images \
 phantom-old からの変更点:
 
 - `documentEmbedding`（256次元）→ `embeddings`（512次元）。キー名・次元とも
-  noir の出力に合わせた。モデルを変える場合は `dims` を連動して変更する
+  書誌の段の出力に合わせた。モデルを変える場合は `dims` を連動して変更する
 - `ocrText` のデータソースを画像側 JSON からの集約に変更し、アナライザを
   kuromoji から `english` に変更（英語文書の検索用）
-- noir が出力しない `embeddingVersion` / `embeddingGeneratedAt` /
+- 書誌の段が出力しない `embeddingVersion` / `embeddingGeneratedAt` /
   `embeddingTextHash` / `embeddingSourceFields` を削除
 
 ## 画像インデックス（img-mapping.json）
@@ -71,10 +72,10 @@ phantom-old からの変更点:
 
 - `docId` / `filename` — 登録側が付与（filename は両 JSON の突き合わせキー）
 - `figureNumber` / `description` / `isRepresentative` / `embeddings`
-  — violet の `images-properties.json` 由来。`embeddings` は open_clip
+  — 画像の段の `images-properties.json` 由来。`embeddings` は open_clip
   xlm-roberta-base-ViT-B-32 / laion5b_s13b_b90k の 512 次元・cosine・L2 正規化済み。
   `ocrText` は文書検索用のため画像側には持たず、文書インデックスに集約する
-- `kind` / `mediaType` / `derived[]` — queen の `images-information.json` 由来。
+- `kind` / `mediaType` / `derived[]` — 変換の段の `images-information.json` 由来。
   `derived` は 3 サイズ WebP（large / middle / thumbnail）のファイル名と実寸で、
   検索結果のサムネイル表示に使う
 - `bibliographic` — 同じ文書の `document-properties.json` から非正規化した書誌。
@@ -83,11 +84,11 @@ phantom-old からの変更点:
 phantom-old からの変更点:
 
 - `imageEmbedding` → `embeddings`、`representative` → `isRepresentative`、
-  `sourceFilename` + 3つの `*Filename` → `filename` + `derived[]`（violet /
-  queen の出力キーに合わせた）
+  `sourceFilename` + 3つの `*Filename` → `filename` + `derived[]`（画像の段・
+  変換の段の出力キーに合わせた）
 - `ocrText` を文書インデックスへ移動（画像単位では検索しないため）
-- パイプラインが生成しなくなった `captionText` / `directMentionText` /
+- phantom が生成しなくなった `captionText` / `directMentionText` /
   `sectionText` / `weakContextText` / `linkingConfidence` / `staticTags` /
   `semanticTags` / `contextEmbedding` / `embedding*` メタデータ /
   `ingest_hash` / `ingested_at` を削除
-- `bibliographic.law` を追加（noir が出力するため）
+- `bibliographic.law` を追加（書誌の段が出力するため）

@@ -2,7 +2,7 @@
 
 日々の運用は2つの画面で行う。
 
-- **navi** — 電子データを取り込んで検索できる状態にするまでのパイプライン管制
+- **navi** — 電子データを取り込んで検索できる状態にする
 - **skull** — 文書に整理番号・タグ・担当者を付け、Elasticsearch に反映する
 
 | | 開発環境（既定） | 本番（nginx 経由） |
@@ -15,9 +15,9 @@
 ```
 電子データを SRC_DIR に置く
         ↓
-navi で「パイプライン開始」            … crow → queen → noir → violet → cendrillon → panther
+navi で「取り込み開始」                … 展開 → 変換 → 書誌 → 画像 → 登録（HTML 由来は HTML → 登録）
         ↓
-joker で検索できる状態になる
+joker で検索できる状態になる（1件ずつ、処理が終わった文書から順に出る）
         ↓
 skull でメタ情報を登録・関連付け
         ↓
@@ -25,128 +25,86 @@ skull で「同期開始」                   … 整理番号・タグ・担当
 ```
 
 新しい電子データが増えたら、この流れをもう一度なぞるだけでよい。
-どのサービスも処理済みの文書はスキップするので、毎回全件を流して構わない。
+処理済みの段はスキップするので、毎回全件を流して構わない（約 700 件の元データで、処理済みなら 1 分ほど）。
 
 ---
 
-# navi — パイプラインを流す
+# navi — 取り込む
 
-![navi の画面](images/navi-overview.png)
+画面は上から3つの部分からなる。
 
-画面は3つの部分からなる。
+- **取り込み** — 開始（XML・HTML の選択、件数の上限）と中止。進み具合、走査済み・検索に出た・完了・対象外・失敗の件数、
+  処理速度と残りの見込み、段ごとの件数、処理中の文書とそれぞれの段
+- **履歴** — 直近の実行。行を押すと、失敗した文書の一覧（段と traceback の末尾）を開く
+- **サービス** — queen・mona・fox・joker・skull・Elasticsearch の死活監視
 
-- **パイプライン** — 6ステージの進行状況と、一括実行の開始・中止
-- **サービス** — タスクを持つ6サービスのカード。個別の開始・中止と進捗カウンタ
-- **その他のサービス** — タスクを持たない mona / fox / joker / skull の死活監視
+## 取り込みの流れ
 
-## 一括実行
+「取り込み開始」を押すと、navi が元データを走査し、文書ごとに次の段を最初から最後まで流す。
+同時に流す文書の数は `NAVI_DOC_CONCURRENCY`（既定 4）。
 
-「パイプライン開始」を押すと、crow → queen → noir → violet → cendrillon → panther を
-「タスク投入 → 完了までポーリング → 次のステージ」で直列に実行する。
-実行中のステージは青、完了したステージは緑になる。
+| 段 | すること | 処理済みの目印 |
+| --- | --- | --- |
+| 展開（extract） | XML の SHA-256 を文書IDとして、アーカイブを文書ストアに展開する。取り込む書類の対象表にない書類はここで「対象外」になる | 文書ディレクトリ |
+| 変換（convert） | XML を XSL で JSON にし、画像を WebP に変換する | `json/document.json` |
+| 書誌（properties） | 書誌事項と本文を取り出し、文書のエンベディングを queen に頼む | `json/document-properties.json` |
+| 画像（images） | 図の情報、OCR（文字が主体の画像だけ）、画像のエンベディング（queen） | `json/images-properties.json` |
+| HTML（html） | XML の無い文書を、HTML と画像から同じ形の JSON にする | 文書ディレクトリと JSON 一式 |
+| 登録（upload） | Elasticsearch の文書・画像インデックスに登録する | `json/doc.json`・`json/img.json` |
 
-- ステージのタスク自体が `failed` / `canceled` になったときだけチェーンが止まる。
-  文書単位の失敗（カウンタの `failed`）ではチェーンは止まらず、警告として表示される
-- 「中止」は実行中ステージのタスクを中止してチェーンを止める。
-  中止は処理中の1文書が終わってから効き、**再開はしない**（もう一度開始すると、
-  未処理の文書だけが処理される）
-- パイプラインの状態は navi のメモリ上にしか無い。navi を再起動するとチェーンは
-  失われるので、その場合は各サービスカードから続きを手動で開始する
-
-## 個別実行
-
-サービスカードの「開始」で、そのサービスのタスクだけを実行できる。
-`max_documents` に件数を入れると、その件数だけ処理して止まる
-（空欄なら全件）。新しい環境で動作確認するときや、
-特定のステージだけやり直したいときに使う。
-
-カウンタの意味は次のとおり。
-
-| | 意味 |
-| --- | --- |
-| total | 走査した文書数 |
-| succeeded | 実際に処理した文書数 |
-| skipped | 出力が既にあってスキップした文書数 |
-| failed | 処理に失敗した文書数（直近の失敗は詳細を展開できる） |
-
-2回目以降の実行で `skipped` が総件数と一致すれば、その時点で処理は行き渡っている。
+- 段の目印のファイルがあれば、その段はスキップして次の段に進む
+- ある段が失敗したら、その文書はそこで打ち切る（「失敗」に数え、履歴から理由を見られる）。
+  次に取り込んだときに、目印の無い段からやり直される
+- 「中止」は、処理中の各文書がいまの段を終えたところで効く。**再開はしない**（もう一度開始すると、
+  未処理の段だけが処理される）
+- 同じ文書（同じ XML / HTML）が元データの2か所にあれば、1回だけ流す（「重複」）
+- 実行の履歴は `NAVI_STATE_DIR` に残るので、navi を再起動しても消えない
 
 ## 覚えておくとよいこと
 
-- 各サービスは**同時に1タスクしか実行しない**。実行中に開始要求を出すと 409 が返る。
-  navi はこの排他をサービス側に任せているので、
-  同じサービスを一括実行と個別実行で同時に叩いても壊れない
-- navi は webhook を使わず、各サービスの
-  [taskservice](https://github.com/hyperion13th144m/phantom/blob/main/libs/python/taskservice/README.md) の API をポーリングしているだけで、
-  各サービスは navi の存在を知らない。navi が落ちていてもパイプラインは
-  各サービスの API から直接動かせる
-- navi はアイドル時は何もポーリングしない。UI を開いている間だけ
-  `GET /api/services` がファンアウトする
+- 取り込みは同時に1つしか実行しない。実行中に開始すると 409 が返る
+- navi はアイドル時は何もポーリングしない。UI を開いている間だけ状況を読みに行く
+- queen（モデルサーバー）が落ちていると、書誌・画像・HTML の段がすべて失敗になる。サービスの欄で queen が緑か確かめる
 
 ## API で操作する
 
-UI を使わずに動かす場合（cron から回す、など）。
+UI を使わずに動かす場合（cron やタスクスケジューラから回す、など）。
 
 ```bash
-# パイプライン一括実行
-curl -X POST localhost:8005/api/pipeline/start -H 'content-type: application/json' -d '{}'
-curl localhost:8005/api/pipeline
-curl -X POST localhost:8005/api/pipeline/cancel
-
-# サービス個別
-curl -X POST localhost:8005/api/services/crow/start \
-  -H 'content-type: application/json' -d '{"params": {"max_documents": 10}}'
-curl -X POST localhost:8005/api/services/crow/cancel
-
-# 各サービスを直接叩くこともできる（タスク名は crow=scan, queen=convert,
-# noir/violet=extract, cendrillon=ingest, panther=upload, skull=sync）
-curl -X POST localhost:8000/tasks -H 'content-type: application/json' \
-  -d '{"name": "scan", "params": {}}'
-curl localhost:8000/tasks/current
-curl localhost:8000/tasks/history
+# 取り込みを始める（sources・maxDocuments は省略可）
+curl -X POST localhost:8005/api/runs -H 'content-type: application/json'   -d '{"sources": ["xml", "html"], "maxDocuments": null}'
+curl localhost:8005/api/runs/current          # 実行中（か直近）の状況
+curl -X POST localhost:8005/api/runs/current/cancel
+curl localhost:8005/api/runs                  # 履歴
+curl localhost:8005/api/runs/<runId>/failures # 失敗した文書
 ```
 
 ## 画像のエンベディングを作り直す
 
-violet のモデルを変えると、既存の画像ベクトルは別の空間のものになって
+CLIP のモデルを変えると、既存の画像ベクトルは別の空間のものになって
 類似画像検索・画像のセマンティック検索が意味を成さなくなる。全画像の作り直しが要る。
 
-violet は `json/images-properties.json` があるかどうかで処理済みを判定するので、
-先に消してから流す。OCR テキストも同じファイルに入っているため、
-再実行では OCR もやり直しになる（時間がかかる）。
+画像の段は `json/images-properties.json` があるかどうかで処理済みを判定するので、
+先に消してから流す。登録の段も `json/doc.json`・`json/img.json` があればスキップするので、一緒に消す。
+OCR テキストも同じファイルに入っているため、再実行では OCR もやり直しになる（時間がかかる）。
 
 ```bash
-find "$PHANTOM_DATA_DIR" -name images-properties.json -delete
-curl -X POST localhost:8003/tasks -H 'content-type: application/json' \
-  -d '{"name": "extract", "params": {}}'
+find "$PHANTOM_DATA_DIR" \( -name images-properties.json -o -name doc.json -o -name img.json \) -delete
+curl -X POST localhost:8005/api/runs -H 'content-type: application/json' -d '{}'
 ```
 
-HTML から取り込んだ文書（cendrillon）も同じモデルを使っている（cendrillon は
-violet の API を叩いて計算してもらっている）ので、同じように消したうえで
-cendrillon も流す。cendrillon は無い JSON だけを作り直すので、
+HTML から取り込んだ文書は、HTML の段が画像のエンベディングまでまとめて作る。HTML の段は無い JSON だけを作り直すので、
 `document-properties.json` を残しておけばテキスト側は再計算されない。
-violet が起動していないと全件 failed になる。
-
-```bash
-curl -X POST localhost:8008/tasks -H 'content-type: application/json' \
-  -d '{"name": "ingest", "params": {}}'
-```
-
-終わったら panther を流して再投入する。
-
-```bash
-curl -X POST localhost:8006/tasks -H 'content-type: application/json' \
-  -d '{"name": "upload", "params": {}}'
-```
 
 ## うまくいかないとき
 
 | 症状 | 見るところ |
 | --- | --- |
-| ステージが `failed` で止まる | サービスカードの失敗一覧、そのサービスのログ |
-| panther がタスクを開始しない | `ES_MAPPING_DIR` にマッピングファイルがあるか、Elasticsearch に繋がるか |
-| panther の `skipped` が多い | その文書に `document-properties.json` / `images-information.json` / `images-properties.json` が揃っていない（noir / queen / violet、HTML 入力なら cendrillon を先に流す） |
-| 特定の文書だけ作り直したい | 文書ディレクトリの該当する出力 JSON を消して再実行する |
+| 実行がすぐ「失敗」になる | 履歴のメッセージ。元データのディレクトリが見えない、XSL が見つからない、Elasticsearch に繋がらない、のどれか |
+| 文書が「失敗」になる | 履歴の行を押して、失敗した段と traceback を見る。navi のログ |
+| 書誌・画像の段がすべて失敗する | queen が動いているか（サービスの欄、`QUEEN_URL`） |
+| 「対象外」が多い | 取り込む書類の対象表（`WHITE_LIST_PATH`、[infra/whitelist](../infra/whitelist/README.md)）に無い書類 |
+| 特定の文書だけ作り直したい | 文書ディレクトリの該当する出力 JSON（と `json/doc.json`・`json/img.json`）を消して再実行する |
 | サービスのランプが赤 | そのサービスが落ちている。`*_URL` の設定と health を確認する |
 
 ---
@@ -220,13 +178,13 @@ Elasticsearch に書き込まれる。
 - 差分を文書インデックスに `update`、同じ `docId` の画像に `update_by_query` で反映し、
   対象から外れた文書からはメタ情報フィールドを削除する
 
-この方式なので、panther が文書を再アップロードしてメタ情報が消えても、
+この方式なので、navi の取り込みが文書を登録し直してメタ情報が消えても、
 同期を実行し直せば復元される。何度実行しても副作用はないので、
 迷ったら流してよい（変化が無い文書は `skipped` になる）。
 
 開始時に、メタ情報フィールド（`intRefNumber` / `extRefNumber` / `tags` / `assignees`）の
 マッピングを既存インデックスへ冪等に追加する。文書インデックスが無い場合は
-タスクを開始しないので、先に panther を実行しておくこと。
+タスクを開始しないので、先に navi で取り込んでおくこと。
 
 API から実行する場合は次のとおり。
 
